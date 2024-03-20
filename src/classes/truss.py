@@ -1,5 +1,7 @@
-from src.classes.node import TrussNode
+from typing import Tuple, Callable
 from src.utils import calc
+from src.utils.types import ConstrainCallable
+from src.classes.node import TrussNode
 from math import cos, sin, sqrt
 
 class Truss:
@@ -22,6 +24,9 @@ class Truss:
         self._A = section_area
         self._E = young_modulus
 
+        self.calculate()
+
+    def calculate(self) -> None:
         self._inclination = calc.calculate_inclination(self._start_node, self._end_node)                
 
         self._start_node.set_displacement(cos(self._inclination), sin(self._inclination))

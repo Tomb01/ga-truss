@@ -1,5 +1,6 @@
 from src.utils.types import ConstrainCallable
 from typing import Tuple 
+import uuid
 
 class TrussNode:
     """
@@ -7,6 +8,7 @@ class TrussNode:
     It is defined by his coordinate in 2D plane (x,y)
     """
 
+    _id: str
     x: float = 0
     y: float = 0
     _u: float = 0
@@ -19,6 +21,7 @@ class TrussNode:
         self.y = y
         self._u = 0
         self._v = 0
+        self._id = "n_" + str(uuid.uuid4())
 
     def set_displacement(self, u: float, v: float) -> None:
         self._u = u
@@ -28,10 +31,23 @@ class TrussNode:
 
     def get_displacement(self) -> Tuple[float, float]:
         return self._u, self._v
+    
+    def compute_displacement(self, u: float, v:float) -> Tuple[float, float]:
+        self.set_displacement(u,v)
+        return self.get_displacement()
 
     def set_constrain(self, constrain: ConstrainCallable) -> None:
         self._constrain = constrain
         self.set_displacement(self._u, self._v)
 
+    def get_index(self) -> int:
+        if hasattr(self, "_index"):
+            return self._index
+        else:
+            raise ValueError("Node index must be set")
+
     def set_index(self, index) -> None:
         self._index = index
+
+    def get_id(self) -> str:
+        return self._id

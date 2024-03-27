@@ -1,30 +1,45 @@
 import unittest
 from math import sqrt, cos
 import sys
+import numpy as np
 
 sys.path.insert(0, '../src')
 
 from src.classes.truss import TrussNode, Truss
 from src.classes.contrains import *
 
-node1 = TrussNode(0,0)
-node2 = TrussNode(2,2)
-
-# Create a simple truss
-truss = Truss(node1, node2, 1, 1)
-
 class TestTruss(unittest.TestCase):
 
     def test_truss_inclination(self):
-        self.assertAlmostEqual(cos(truss.get_inclination()), 1/sqrt(2))
-
-    def test_truss_length(self):
-        self.assertEqual(truss.getlength(), sqrt(2^2+2^2))
-
-    def test_truss_constrain(self):
-        from src.classes.contrains import HingeConstrain
+        node1 = TrussNode(0.42264973,0)
+        node2 = TrussNode(1,1)
         HingeConstrain(node1)
-        self.assertEqual(node1.get_displacement(), (0,0))
-        CartConstrainOrizontal(node2)
-        self.assertAlmostEqual(node2.get_displacement()[1], 1/sqrt(2))
-        self.assertAlmostEqual(node2.get_displacement()[0], 0)
+        # Create a simple truss
+        truss = Truss(node1, node2, 1, 1)
+        self.assertAlmostEqual(cos(truss.get_inclination()), 0.5)
+        self.assertAlmostEqual(truss.get_length(), 1.154700538)
+
+    def test_structure_check(self):
+        from src.classes.structure import Structure
+        node1 = TrussNode(2.0, 0.0)
+        node2 = TrussNode(0.42264973, 0.0)
+        node3 = TrussNode(0.0, 1.0)
+        node4 = TrussNode(1.0, 1.0)
+
+        HingeConstrain(node1)
+        HingeConstrain(node2)
+        HingeConstrain(node3)
+        
+        trusses = [Truss(node1, node4, 1.0, 1.0), Truss(node2, node4, 1.0, 1.0), Truss(node3, node4, 1.0, 1.0)]
+        nodes = [node1, node2, node3, node4]
+
+        sol = np.array([[0, 0, 0, -1/sqrt(2), 0, 0, 0, 1/sqrt(2), sqrt(2), 0, 0, 0],
+                        [0, 0, 0, 1/2, 0, 0, 0, sqrt(3)/2, 0, 1.154700538, 0, 0],
+                        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0]
+                        ])
+        structure = Structure(nodes, trusses)
+        A = structure.populate()
+        print(cos(trusses[1].get_inclination()))
+
+        np.testing.assert_almost_equal(sol, A[0:3])
+        

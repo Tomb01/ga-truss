@@ -27,14 +27,18 @@ class Truss:
         self.calculate()
 
     def calculate(self) -> None:
-        self._inclination = calc.calculate_inclination(self._start_node, self._end_node)                
+        self._inclination = calc.calculate_inclination(self._start_node, self._end_node) 
+        #print(self._inclination)               
 
         self._start_node.set_displacement(cos(self._inclination), sin(self._inclination))
         self._end_node.set_displacement(cos(self._inclination), sin(self._inclination))
-        self._length = sqrt((self._end_node.x-self._start_node.x)^2 + (self._end_node.y-self._start_node.y)^2)
+        self._length = sqrt((self._end_node.x-self._start_node.x)**2 + (self._end_node.y-self._start_node.y)**2)
+
+    def get_nodes(self) -> Tuple[TrussNode, TrussNode]:
+        return (self._start_node, self._end_node)
 
     def get_inclination(self) -> float:
         return self._inclination
     
-    def getlength(self) -> float:
+    def get_length(self) -> float:
         return self._length

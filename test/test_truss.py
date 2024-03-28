@@ -1,5 +1,5 @@
 import unittest
-from math import sqrt, cos
+from math import sqrt, cos, pi, sin
 import sys
 import numpy as np
 
@@ -20,6 +20,7 @@ class TestTruss(unittest.TestCase):
         self.assertAlmostEqual(truss.get_length(), 1.154700538)
 
     def test_structure_check(self):
+        # Tema 15/06/2023 - A, es.1 
         from src.classes.structure import Structure
         node1 = TrussNode(2.0, 0.0)
         node2 = TrussNode(0.42264973, 0.0)
@@ -33,13 +34,19 @@ class TestTruss(unittest.TestCase):
         trusses = [Truss(node1, node4, 1.0, 1.0), Truss(node2, node4, 1.0, 1.0), Truss(node3, node4, 1.0, 1.0)]
         nodes = [node1, node2, node3, node4]
 
-        sol = np.array([[0, 0, 0, -1/sqrt(2), 0, 0, 0, 1/sqrt(2), sqrt(2), 0, 0, 0],
-                        [0, 0, 0, 1/2, 0, 0, 0, sqrt(3)/2, 0, 1.154700538, 0, 0],
-                        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0]
+        sol = np.array([[0, 0, 0, -1/sqrt(2), 0, 0, 0, 1/sqrt(2), sqrt(2), 0, 0],
+                        [0, 0, 0, 1/2, 0, 0, 0, sqrt(3)/2, 0, 1.154700538, 0],
+                        [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1],
+                        [0, 0, 0, 0, 0, 0, 0, 0, -1/sqrt(2), 0, 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 0, cos(60*pi/180), 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [0, 0, 0, 0, 0, 0, 0, 0, -1/sqrt(2), cos(60*pi/180), 1],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 1/sqrt(2), 0, 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 0, sin(60*pi/180), 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 1/sqrt(2), sin(60*pi/180), 0],
                         ])
         structure = Structure(nodes, trusses)
         A = structure.populate()
-        print(cos(trusses[1].get_inclination()))
-
-        np.testing.assert_almost_equal(sol, A[0:3])
+        np.testing.assert_almost_equal(sol, A)
         

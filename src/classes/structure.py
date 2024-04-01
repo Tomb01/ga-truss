@@ -39,25 +39,10 @@ class Structure:
             self._nodes[index-0].set_index(index)
         
     def populate(self) -> np.array:
-        """
-        Populate A system matrix with displacement u,v and force coefficient
-        With:
-        * n = number of nodes (1, 2, ...n)
-        * k = number of truss (A, B, ...k)
-        * N = force trasmitted from truss to node
-        * u,v = x and y node displacement
 
-        The column structure of A matrix:
-
-        | u1, v1, u2, v2, ... un, vn, NA, NB, ... Nk |
-
-        for k truss equation and then for n nodes equation (first x, then y direction)
-        Final matrix size will be (k+2n) x (k+2n)
-        """
-
-        A = np.zeros((len(self._trusses) + len(self._nodes)*2, len(self._nodes)*2+len(self._trusses)))
         n_nodes = len(self._nodes)
         n_trusses = len(self._trusses)
+        A = np.zeros((n_nodes*2, n_nodes*2))
 
         for k in range(0, n_trusses):
             truss = self._trusses[k]
@@ -65,22 +50,37 @@ class Structure:
             alpha = truss.get_inclination()
             u = cos(alpha)
             v = sin(alpha)
-            u1k, v1k = start.compute_displacement(u,v)
+            u1, v1 = start.compute_displacement(u, v)
+            u2, v2 = end.compute_displacement(u, v)
             i1 = start.get_index()
-            u2k, v2k = end.compute_displacement(u,v)
             i2 = end.get_index()
-            # Assign force coefficient to truss equation
-            A[k,n_nodes*2+k] = truss.get_length()/truss._E/truss._A
-            # Assign displacement to matrix, row = k, col = i
-            A[k,i1] = u1k 
-            A[k,i1+n_nodes] = v1k 
-            A[k,i2] = u2k 
-            A[k,i2+n_nodes] = v2k 
-            # assign force coefficient in x,y node equation
-            node_eq_col = n_nodes*2+k
-            A[n_trusses+i1, node_eq_col] = cos(truss.get_inclination())
-            A[n_trusses+i1+n_nodes, node_eq_col] = sin(truss.get_inclination())
-            A[n_trusses+i2, node_eq_col] = cos(truss.get_inclination())
-            A[n_trusses+i2+n_nodes, node_eq_col] = sin(truss.get_inclination())
-
+            #print(u1, u2, v1, v2)
+            tk = truss.area*truss.E/truss.get_length()
+            Nu1 = tk*u1
+            Nu2 = tk*u2
+            Nv1 = tk*v1
+            Nv2 = tk*v2
+            
+            # Node 1 equation, x direction
+            A[i1, i1] = Nu1*cos(alpha)
+            A[i1, i2] = Nu2*cos(alpha)
+            A[i1, i1+n_nodes] = Nv1*cos(alpha)
+            A[i1, i2+n_nodes] = Nv2*cos(alpha)
+            # Node 1 equation, y direction
+            A[i1+n_nodes, i1] = Nu1*sin(alpha)
+            A[i1+n_nodes, i2] = Nu2*sin(alpha)
+            A[i1+n_nodes, i1+n_nodes] = Nv1*sin(alpha)
+            A[i1+n_nodes, i2+n_nodes] = Nv2*sin(alpha)
+            
+            # Node 2 equation, x direction
+            A[i2, i1] = Nu1*cos(alpha)
+            A[i2, i2] = Nu2*cos(alpha)
+            A[i2, i1+n_nodes] = Nv1*cos(alpha)
+            A[i2, i2+n_nodes] = Nv2*cos(alpha)
+            # Node 2 equation, y direction
+            A[i2+n_nodes, i1] = Nu1*sin(alpha)
+            A[i2+n_nodes, i2] = Nu2*sin(alpha)
+            A[i2+n_nodes, i1+n_nodes] = Nv1*sin(alpha)
+            A[i2+n_nodes, i2+n_nodes] = Nv2*sin(alpha)
+            
         return A

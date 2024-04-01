@@ -11,9 +11,9 @@ class Truss:
 
     _start_node: TrussNode
     _end_node: TrussNode
-    _A: float
-    _E: float
-    _N: float
+    area: float
+    E: float
+    N: float
     _length: float
     _inclination: float
     _absinclination: float
@@ -21,8 +21,8 @@ class Truss:
     def __init__(self, start_node: TrussNode, end_node: TrussNode, section_area:float, young_modulus: float) -> None:
         self._start_node = start_node
         self._end_node = end_node
-        self._A = section_area
-        self._E = young_modulus
+        self.area = section_area
+        self.E = young_modulus
 
         self.calculate()
 

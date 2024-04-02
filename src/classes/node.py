@@ -15,6 +15,8 @@ class TrussNode:
     _v: float = 0
     _index: int
     _constrain: ConstrainCallable
+    _constrain_y: bool = False
+    _constrain_x: bool = False
 
     def __init__(self, x: float, y: float) -> None:
         self.x = x
@@ -39,6 +41,10 @@ class TrussNode:
     def set_constrain(self, constrain: ConstrainCallable) -> None:
         self._constrain = constrain
         self.set_displacement(self._u, self._v)
+        if self._u == 0:
+            self._constrain_x = True
+        if self._v == 0:
+            self._constrain_y = True
 
     def get_index(self) -> int:
         if hasattr(self, "_index"):
@@ -51,3 +57,12 @@ class TrussNode:
 
     def get_id(self) -> str:
         return self._id
+    
+    def is_constrained(self) -> bool:
+        return self.is_constrained_x() and self.is_constrained_y()
+        
+    def is_constrained_x(self) -> bool:
+        return self._constrain_x
+        
+    def is_constrained_y(self) -> bool:
+        return self._constrain_y

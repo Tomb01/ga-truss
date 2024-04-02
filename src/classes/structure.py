@@ -8,6 +8,7 @@ class Structure:
     _nodes: List[TrussNode]
     _trusses: List[Truss]
     _systemA: np.array
+    _n_constrain: int = 0
 
     def __init__(self, nodes: List[TrussNode], trusses: List[Truss]) -> None:
         self._nodes = nodes
@@ -26,6 +27,10 @@ class Structure:
         node_list: Dict[str, bool] = {}
         for node in self._nodes:
             node_list[node.get_id()] = True
+            if node.is_constrained_x():
+                self._n_constrain = self._n_constrain+1
+            if node.is_constrained_y():
+                self._n_constrain = self._n_constrain+1
 
         #print(node_check, node_list)
 
@@ -33,6 +38,9 @@ class Structure:
             return True
         else:
             return False
+        
+    def get_DOF(self) -> int:
+        raise NotImplementedError
         
     def assing_index(self) -> None:
         for index in range(0, len(self._nodes)):
@@ -42,7 +50,8 @@ class Structure:
 
         n_nodes = len(self._nodes)
         n_trusses = len(self._trusses)
-        A = np.zeros((n_nodes*2, n_nodes*2))
+        A = np.zeros((n_nodes*2 + self._n_constrain, n_nodes*2))
+        constrained_rows: int = 0
 
         for k in range(0, n_trusses):
             truss = self._trusses[k]
@@ -50,37 +59,41 @@ class Structure:
             alpha = truss.get_inclination()
             u = cos(alpha)
             v = sin(alpha)
-            u1, v1 = start.compute_displacement(u, v)
-            u2, v2 = end.compute_displacement(u, v)
             i1 = start.get_index()
             i2 = end.get_index()
             #print(u1, u2, v1, v2)
             tk = truss.area*truss.E/truss.get_length()
-            Nu1 = tk*u1
-            Nu2 = tk*u2
-            Nv1 = tk*v1
-            Nv2 = tk*v2
+            Nu1 = tk*u
+            Nv1 = tk*v
             
             # Node 1 equation, x direction
             A[i1, i1] = Nu1*cos(alpha)
-            A[i1, i2] = Nu2*cos(alpha)
+            A[i1, i2] = Nu1*cos(alpha)
             A[i1, i1+n_nodes] = Nv1*cos(alpha)
-            A[i1, i2+n_nodes] = Nv2*cos(alpha)
+            A[i1, i2+n_nodes] = Nv1*cos(alpha)
             # Node 1 equation, y direction
             A[i1+n_nodes, i1] = Nu1*sin(alpha)
-            A[i1+n_nodes, i2] = Nu2*sin(alpha)
+            A[i1+n_nodes, i2] = Nu1*sin(alpha)
             A[i1+n_nodes, i1+n_nodes] = Nv1*sin(alpha)
-            A[i1+n_nodes, i2+n_nodes] = Nv2*sin(alpha)
+            A[i1+n_nodes, i2+n_nodes] = Nv1*sin(alpha)
             
             # Node 2 equation, x direction
             A[i2, i1] = Nu1*cos(alpha)
-            A[i2, i2] = Nu2*cos(alpha)
+            A[i2, i2] = Nu1*cos(alpha)
             A[i2, i1+n_nodes] = Nv1*cos(alpha)
-            A[i2, i2+n_nodes] = Nv2*cos(alpha)
+            A[i2, i2+n_nodes] = Nv1*cos(alpha)
             # Node 2 equation, y direction
             A[i2+n_nodes, i1] = Nu1*sin(alpha)
-            A[i2+n_nodes, i2] = Nu2*sin(alpha)
+            A[i2+n_nodes, i2] = Nu1*sin(alpha)
             A[i2+n_nodes, i1+n_nodes] = Nv1*sin(alpha)
-            A[i2+n_nodes, i2+n_nodes] = Nv2*sin(alpha)
+            A[i2+n_nodes, i2+n_nodes] = Nv1*sin(alpha)
+            
+            # Set constrain equation
+            if start.is_constrained_x():
+                A[n_nodes*2+constrained_rows, i1] = 1
+                # Assing constrain to b
+            if start.is_constrained_y():
+                A[n_nodes*2+constrained_rows, i1+n_nodes] = 1
+
             
         return A

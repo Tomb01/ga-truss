@@ -1,3 +1,3 @@
 from typing import Callable, Tuple
 
-NodeCallable = Callable[[float, float], Tuple[float, float]]
+NodeCallable = Callable[[], Tuple[float, float]]

@@ -28,10 +28,9 @@ class Structure:
         node_list: Dict[str, bool] = {}
         for node in self._nodes:
             node_list[node.get_id()] = True
-            if node.is_constrained_x():
-                self._n_constrain = self._n_constrain+1
-            if node.is_constrained_y():
-                self._n_constrain = self._n_constrain+1
+            h,r = node.get_constrain()
+            self._n_constrain = self._n_constrain + 1 if h != 0 else self._n_constrain
+            self._n_constrain = self._n_constrain + 1 if r != 0 else self._n_constrain
 
         #print(node_check, node_list)
 
@@ -51,11 +50,12 @@ class Structure:
 
         n_nodes = len(self._nodes)
         n_trusses = len(self._trusses)
-        m = n_nodes*2 + self._n_constrain
+        n_constrain = self._n_constrain
+        m = 4*n_nodes
         # linear system (m, n) x (n, 1) = (m, 1)
         A = np.zeros((m, m))
-        b = np.zeros((m, 1))
-        constrain_i: int = 0
+        b = np.zeros((n_constrain+2*n_nodes, 1))
+        i_constrain: int = 0
 
         for k in range(0, n_trusses):
             truss = self._trusses[k]
@@ -66,9 +66,9 @@ class Structure:
             i2 = node2.get_index()
             
             # x direction -> cos, y direction -> sin
-            # displacement = sin/cos(force angle) * EA/l * sin/cos(truss angle) 
-            u = cos(alpha)*k_truss*cos(alpha)
-            v = sin(alpha)*k_truss*sin(alpha)
+            # displacement = EA/l * sin/cos(truss angle) 
+            u = k_truss*cos(alpha)
+            v = k_truss*sin(alpha)
             print("{k:n} - node {index:n}: u={u:.3f}, v={v:.3f}".format(index=i1, u=u, v=v, k=k))
             print("{k:n} - node {index:n}: u={u:.3f}, v={v:.3f}".format(index=i2, u=-u, v=-v, k=k))
             # Add calculated displacement, - is because the difference (u2-u1)cos(a) + (v2-v1)sin(a)
@@ -78,18 +78,36 @@ class Structure:
             eq[i2+n_nodes] = v
             eq[i1+n_nodes] = -v
             
+            # Get constrain
+            h1, r1 = node1.get_constrain()
+            h2, r2 = node2.get_constrain()
+            
+            A[i1, 2*n_nodes + i1] = h1
+            A[i2, 2*n_nodes + i2] = h2
+            A[i1+n_nodes, 3*n_nodes + i1] = r1
+            A[i2+n_nodes, 3*n_nodes + i2] = r2
+            A[2*n_nodes+i1, i1] = h1
+            A[2*n_nodes+i2, i2] = h2
+            A[3*n_nodes+i1, i1+n_nodes] = r1
+            A[3*n_nodes+i2, i2+n_nodes] = r2
+            
             # Apply node 1 equation
             # Node 1 = internal
             xdir1 = get_truss_x_direction(node1, node2)
             ydir1 = get_truss_y_direction(node1, node2)
-            A[i1] = A[i1] + eq * xdir1
-            A[i1+n_nodes] = A[i1+n_nodes] + eq * ydir1
+            A[i1] = A[i1] + eq * cos(alpha)
+            A[i1+n_nodes] = A[i1+n_nodes] + eq * sin(alpha)
             
             # Apply node 2 equation
             # Node 2 = internal
-            xdir2 = get_truss_x_direction(node2, node1)
-            ydir2 = get_truss_y_direction(node2, node1)
-            A[i2] = A[i2] + eq*xdir2
-            A[i2+n_nodes] = A[i2+n_nodes] + eq*ydir2
+            A[i2] = A[i2] + eq * cos(alpha)
+            A[i2+n_nodes] = A[i2+n_nodes] + eq * sin(alpha)
+        
+        #Resize matrix to delete all zeros row and col
+        #https://stackoverflow.com/a/51770413
+        
+        idx = np.argwhere(np.all(A[..., :] == 0, axis=0))
+        A = np.delete(A, idx, axis=1)
+        A = A[~np.all(A == 0, axis=1)]
         
         return A, b   

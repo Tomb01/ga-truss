@@ -2,6 +2,7 @@ from src.classes.truss import *
 from src.classes.contrains import *
 from src.classes.structure import *
 import numpy as np
+from math import isclose
 
 if __name__ == "__main__":
     # Tema 15/06/2023 - A, es.1 
@@ -22,5 +23,11 @@ if __name__ == "__main__":
     structure = Structure(nodes, trusses)
     
     A, b = structure.populate()
-    print(A[0])
-    #print(np.linalg.solve(A,b))
+    #print(A[5])
+    b[1] = 1000
+    zeros = np.zeros(A.shape[1])
+    j = 0
+    print(A.shape)
+    print(np.linalg.matrix_rank(A), A.shape[0])
+    np.set_printoptions(precision=3, suppress=True)
+    print(np.linalg.solve(A, b))

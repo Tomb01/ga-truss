@@ -1,18 +1,25 @@
 from src.utils.types import NodeCallable
 from src.classes.node import TrussNode
 
-# Constrain function (u,v) => (u,v)
+# Constrain function () => (ak1,ak2)
 def Constrain(constrain_func: NodeCallable, node: TrussNode) -> None:
+    """
+    Constrain function return the reaction coefficient to use in node equation
+    If no constrain return 0,0
+    """
     node.set_constrain(constrain_func)
 
 def HingeConstrain(node: TrussNode) -> None:
-    Constrain(lambda u,v : (0.0,0.0), node)
+    """
+    Constrain both in x and y, return 1,1
+    """
+    Constrain(lambda : (1, 1), node)
         
 def CartConstrainVertical(node: TrussNode) -> None:
-    Constrain(lambda u,v : (u,0.0), node)
+    Constrain(lambda : (0, 1), node)
 
 def CartConstrainOrizontal(node: TrussNode) -> None:
-    Constrain(lambda u,v : (0.0,v), node)
+    Constrain(lambda : (1, 0), node)
 
 def RemoveConstrain(node: TrussNode) -> None:
     delattr(node, "_constrain")

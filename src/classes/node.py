@@ -16,8 +16,6 @@ class TrussNode:
     _index: int
     _constrain: NodeCallable
     _load: NodeCallable
-    _constrain_y: bool = False
-    _constrain_x: bool = False
 
     def __init__(self, x: float, y: float) -> None:
         self.x = x
@@ -29,8 +27,6 @@ class TrussNode:
     def set_displacement(self, u: float, v: float) -> None:
         self._u = u
         self._v = v
-        if hasattr(self, "_constrain"):
-            self._u, self._v = self._constrain(u,v)
 
     def get_displacement(self) -> Tuple[float, float]:
         return self._u, self._v
@@ -50,11 +46,12 @@ class TrussNode:
 
     def set_constrain(self, constrain: NodeCallable) -> None:
         self._constrain = constrain
-        self.set_displacement(self._u, self._v)
-        if self._u == 0:
-            self._constrain_x = True
-        if self._v == 0:
-            self._constrain_y = True
+        
+    def get_constrain(self) -> Tuple[float, float]:
+        if self.is_constrained():
+            return self._constrain()
+        else:
+            return 0,0
 
     def get_index(self) -> int:
         if hasattr(self, "_index"):
@@ -69,10 +66,4 @@ class TrussNode:
         return self._id
     
     def is_constrained(self) -> bool:
-        return self.is_constrained_x() and self.is_constrained_y()
-        
-    def is_constrained_x(self) -> bool:
-        return self._constrain_x
-        
-    def is_constrained_y(self) -> bool:
-        return self._constrain_y
+        return hasattr(self, "_constrain")

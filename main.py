@@ -21,8 +21,6 @@ if __name__ == "__main__":
     
     structure = Structure(nodes, trusses)
     
-    A = structure.populate()
-    b = np.zeros(5*2)
-    b[1] = 100
+    A, b = structure.populate()
     print(A[0])
-    np.linalg.solve(A, b)
+    #print(np.linalg.solve(A,b))

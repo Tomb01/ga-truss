@@ -1,5 +1,5 @@
-from src.utils.types import ConstrainCallable
-from typing import Tuple 
+from src.utils.types import NodeCallable
+from typing import Tuple, Optional
 import uuid
 
 class TrussNode:
@@ -14,7 +14,8 @@ class TrussNode:
     _u: float = 0
     _v: float = 0
     _index: int
-    _constrain: ConstrainCallable
+    _constrain: NodeCallable
+    _load: NodeCallable
     _constrain_y: bool = False
     _constrain_x: bool = False
 
@@ -34,11 +35,20 @@ class TrussNode:
     def get_displacement(self) -> Tuple[float, float]:
         return self._u, self._v
     
+    def set_load(self, load: NodeCallable) -> None:
+        self._load = load
+        
+    def get_load(self) -> Tuple[float, float]:
+        if hasattr(self, "_load"):
+            return self._load(self.get_displacement())
+        else:
+            return (0,0)
+    
     def compute_displacement(self, u: float, v:float) -> Tuple[float, float]:
         self.set_displacement(u,v)
         return self.get_displacement()
 
-    def set_constrain(self, constrain: ConstrainCallable) -> None:
+    def set_constrain(self, constrain: NodeCallable) -> None:
         self._constrain = constrain
         self.set_displacement(self._u, self._v)
         if self._u == 0:

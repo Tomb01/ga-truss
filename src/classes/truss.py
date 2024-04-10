@@ -1,6 +1,6 @@
 from typing import Tuple, Callable
 from src.utils import calc
-from src.utils.types import ConstrainCallable
+from src.utils.types import NodeCallable
 from src.classes.node import TrussNode
 from math import cos, sin, sqrt
 

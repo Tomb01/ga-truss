@@ -1,8 +1,8 @@
-from src.utils.types import ConstrainCallable
+from src.utils.types import NodeCallable
 from src.classes.node import TrussNode
 
 # Constrain function (u,v) => (u,v)
-def Constrain(constrain_func: ConstrainCallable, node: TrussNode) -> None:
+def Constrain(constrain_func: NodeCallable, node: TrussNode) -> None:
     node.set_constrain(constrain_func)
 
 def HingeConstrain(node: TrussNode) -> None:

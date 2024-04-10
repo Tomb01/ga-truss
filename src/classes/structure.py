@@ -1,7 +1,8 @@
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import numpy as np
 from src.classes.truss import Truss, TrussNode
 from math import cos, sin
+from src.utils.calc import get_truss_x_direction, get_truss_y_direction, add_to_matrix
 
 class Structure:
 
@@ -46,54 +47,49 @@ class Structure:
         for index in range(0, len(self._nodes)):
             self._nodes[index-0].set_index(index)
         
-    def populate(self) -> np.array:
+    def populate(self) -> Tuple[np.array, np.array]:
 
         n_nodes = len(self._nodes)
         n_trusses = len(self._trusses)
-        A = np.zeros((n_nodes*2 + self._n_constrain, n_nodes*2))
-        constrained_rows: int = 0
+        m = n_nodes*2 + self._n_constrain
+        # linear system (m, n) x (n, 1) = (m, 1)
+        A = np.zeros((m, m))
+        b = np.zeros((m, 1))
+        constrain_i: int = 0
 
         for k in range(0, n_trusses):
             truss = self._trusses[k]
-            start, end = truss.get_nodes()
+            k_truss = truss.area*truss.E/truss.get_length()
+            node1, node2 = truss.get_nodes()
             alpha = truss.get_inclination()
-            u = cos(alpha)
-            v = sin(alpha)
-            i1 = start.get_index()
-            i2 = end.get_index()
-            #print(u1, u2, v1, v2)
-            tk = truss.area*truss.E/truss.get_length()
-            Nu1 = tk*u
-            Nv1 = tk*v
+            i1 = node1.get_index()
+            i2 = node2.get_index()
             
-            # Node 1 equation, x direction
-            A[i1, i1] = Nu1*cos(alpha)
-            A[i1, i2] = Nu1*cos(alpha)
-            A[i1, i1+n_nodes] = Nv1*cos(alpha)
-            A[i1, i2+n_nodes] = Nv1*cos(alpha)
-            # Node 1 equation, y direction
-            A[i1+n_nodes, i1] = Nu1*sin(alpha)
-            A[i1+n_nodes, i2] = Nu1*sin(alpha)
-            A[i1+n_nodes, i1+n_nodes] = Nv1*sin(alpha)
-            A[i1+n_nodes, i2+n_nodes] = Nv1*sin(alpha)
+            # x direction -> cos, y direction -> sin
+            # displacement = sin/cos(force angle) * EA/l * sin/cos(truss angle) 
+            u = cos(alpha)*k_truss*cos(alpha)
+            v = sin(alpha)*k_truss*sin(alpha)
+            print("{k:n} - node {index:n}: u={u:.3f}, v={v:.3f}".format(index=i1, u=u, v=v, k=k))
+            print("{k:n} - node {index:n}: u={u:.3f}, v={v:.3f}".format(index=i2, u=-u, v=-v, k=k))
+            # Add calculated displacement, - is because the difference (u2-u1)cos(a) + (v2-v1)sin(a)
+            eq = np.zeros(m)
+            eq[i2] = u
+            eq[i1] = -u
+            eq[i2+n_nodes] = v
+            eq[i1+n_nodes] = -v
             
-            # Node 2 equation, x direction
-            A[i2, i1] = Nu1*cos(alpha)
-            A[i2, i2] = Nu1*cos(alpha)
-            A[i2, i1+n_nodes] = Nv1*cos(alpha)
-            A[i2, i2+n_nodes] = Nv1*cos(alpha)
-            # Node 2 equation, y direction
-            A[i2+n_nodes, i1] = Nu1*sin(alpha)
-            A[i2+n_nodes, i2] = Nu1*sin(alpha)
-            A[i2+n_nodes, i1+n_nodes] = Nv1*sin(alpha)
-            A[i2+n_nodes, i2+n_nodes] = Nv1*sin(alpha)
+            # Apply node 1 equation
+            # Node 1 = internal
+            xdir1 = get_truss_x_direction(node1, node2)
+            ydir1 = get_truss_y_direction(node1, node2)
+            A[i1] = A[i1] + eq * xdir1
+            A[i1+n_nodes] = A[i1+n_nodes] + eq * ydir1
             
-            # Set constrain equation
-            if start.is_constrained_x():
-                A[n_nodes*2+constrained_rows, i1] = 1
-                # Assing constrain to b
-            if start.is_constrained_y():
-                A[n_nodes*2+constrained_rows, i1+n_nodes] = 1
-
-            
-        return A
+            # Apply node 2 equation
+            # Node 2 = internal
+            xdir2 = get_truss_x_direction(node2, node1)
+            ydir2 = get_truss_y_direction(node2, node1)
+            A[i2] = A[i2] + eq*xdir2
+            A[i2+n_nodes] = A[i2+n_nodes] + eq*ydir2
+        
+        return A, b   

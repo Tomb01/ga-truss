@@ -24,10 +24,13 @@ if __name__ == "__main__":
     
     A, b = structure.populate()
     #print(A[5])
-    b[1] = 1000
     zeros = np.zeros(A.shape[1])
     j = 0
+    b[1] = 1
     print(A.shape)
     print(np.linalg.matrix_rank(A), A.shape[0])
     np.set_printoptions(precision=3, suppress=True)
-    print(np.linalg.solve(A, b))
+    print(np.linalg.solve(A, b).transpose())
+    for row in A:
+        t = input()
+        print(row)

@@ -1,36 +1,31 @@
 from src.classes.truss import *
 from src.classes.contrains import *
 from src.classes.structure import *
+from src.utils.misc import make_brige_coordinate
 import numpy as np
 from math import isclose
+from src.graphics.drawing import *
 
 if __name__ == "__main__":
-    # Tema 15/06/2023 - A, es.1 
-    node1 = TrussNode(2.0, 0.0)
-    node2 = TrussNode(1, 0.0)
-    node3 = TrussNode(0, 0)
-    node4 = TrussNode(0, 1)
-    node5 = TrussNode(0, -1)
-
-    HingeConstrain(node1)
-    HingeConstrain(node3)
-    HingeConstrain(node4)
-    HingeConstrain(node5)
-            
-    trusses = [Truss(node1, node2, 1.0, 1.0), Truss(node2, node4, 1.0, 1.0), Truss(node2, node3, 1.0, 1.0), Truss(node2, node5, 1.0, 1.0)]
-    nodes = [node1, node2, node3, node4, node5]
     
+    # Appello 13/07/2018 - Tema A https://drive.google.com/file/d/13siogH0Rv4tQqtWkeGlki3VHwjq172c0/view?usp=sharing
+    # Trave a triangolo equilatero con 4 aste sul bordo inferiore
+    drawing = Drawing(cairo.SVGSurface("truss.svg", 600, 600))
+    
+    A = 1
+    E = 1
+        
+    coord = make_brige_coordinate(1, 4)
+    nodes = list(map(lambda point: TrussNode(point[0], point[1]), coord))
+    print(coord)
+    trusses = list()
+    for i in range(0, len(nodes)-2):
+        trusses.append(Truss(nodes[i], nodes[i+1], A, E))
+        trusses.append(Truss(nodes[i], nodes[i+2], A, E))
+        
+    trusses.append(Truss(nodes[-1], nodes[-2], A, E))   
     structure = Structure(nodes, trusses)
-    
-    A, b = structure.populate()
-    #print(A[5])
-    zeros = np.zeros(A.shape[1])
-    j = 0
-    b[1] = 1
-    print(A.shape)
-    print(np.linalg.matrix_rank(A), A.shape[0])
-    np.set_printoptions(precision=3, suppress=True)
-    print(np.linalg.solve(A, b).transpose())
-    for row in A:
-        t = input()
-        print(row)
+        
+    drawing.draw_structure(structure)
+        
+

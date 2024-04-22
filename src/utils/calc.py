@@ -14,10 +14,12 @@ def get_truss_x_direction(internal_node: TrussNode, external_node: TrussNode) ->
     This function return 1 if direction is corret, -1 if must be inverted.
     Multiply the results and the load to get the correct value.
     """
-    if internal_node.x >= external_node.x:
+    if internal_node.x > external_node.x:
         return 1
     elif internal_node.x < external_node.x:
         return -1
+    else:
+        return 1
     
 def get_truss_y_direction(internal_node: TrussNode, external_node: TrussNode) -> int:
     """
@@ -25,10 +27,12 @@ def get_truss_y_direction(internal_node: TrussNode, external_node: TrussNode) ->
     This function return 1 if direction is corret, -1 if must be inverted.
     Multiply the results and the load to get the correct value.
     """
-    if internal_node.y >= external_node.y:
+    if internal_node.y > external_node.y:
         return 1
     elif internal_node.y < external_node.y:
         return -1
+    else:
+        return 1
 
 def add_to_matrix(arr: np.array, row: int, col:int, value: float) -> None:
     current = arr[row, col]

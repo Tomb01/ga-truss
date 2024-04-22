@@ -94,16 +94,16 @@ class Structure:
             # Apply node 1 equation
             # Node 1 = internal
             xdir1 = get_truss_x_direction(node1, node2)
-            ydir1 = get_truss_y_direction(node1, node2)
+            #ydir1 = get_truss_y_direction(node1, node2)
             A[i1] = A[i1] + eq * xdir1 * cos(alpha)
-            A[i1+n_nodes] = A[i1+n_nodes] + eq * sin(alpha) 
+            A[i1+n_nodes] = A[i1+n_nodes] + eq * sin(alpha)
             
             # Apply node 2 equation
             # Node 2 = internal
             xdir2 = get_truss_x_direction(node2, node1)
-            ydir2 = get_truss_y_direction(node2, node1)
+            #ydir2 = get_truss_y_direction(node2, node1)
             A[i2] = A[i2] + eq * cos(alpha) * xdir2
-            A[i2+n_nodes] = A[i2+n_nodes] + eq * sin(alpha) 
+            A[i2+n_nodes] = A[i2+n_nodes] + eq * sin(alpha)
         
         #Resize matrix to delete all zeros row and col
         #https://stackoverflow.com/a/51770413

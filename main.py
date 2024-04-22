@@ -10,7 +10,7 @@ if __name__ == "__main__":
     
     # Appello 13/07/2018 - Tema A https://drive.google.com/file/d/13siogH0Rv4tQqtWkeGlki3VHwjq172c0/view?usp=sharing
     # Trave a triangolo equilatero con 4 aste sul bordo inferiore
-    drawing = Drawing(cairo.SVGSurface("truss.svg", 600, 600))
+    drawing = Drawing(cairo.SVGSurface("out/truss.svg", 600, 600))
     
     A = 1
     E = 1

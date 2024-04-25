@@ -6,7 +6,11 @@ def calculate_inclination(node1: TrussNode, node2: TrussNode) -> float:
     delta_x = node2.x - node1.x
     delta_y = node2.y - node1.y
 
-    return math.atan2(delta_y, delta_x)
+    angle = math.atan2(delta_y, delta_x)
+    if angle < 0:
+        return 2*math.pi+angle
+    else:
+        return angle
 
 def get_truss_x_direction(internal_node: TrussNode, external_node: TrussNode) -> int:
     """

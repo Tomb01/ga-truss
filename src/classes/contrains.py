@@ -23,3 +23,9 @@ def CartConstrainOrizontal(node: TrussNode) -> None:
 
 def RemoveConstrain(node: TrussNode) -> None:
     delattr(node, "_constrain")
+    
+##### Load
+
+def Load(node: TrussNode, Px: float, Py: float) -> None:
+    node.set_load(Px, Py)
+    

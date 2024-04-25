@@ -15,7 +15,7 @@ class TrussNode:
     _v: float = 0
     _index: int
     _constrain: NodeCallable
-    _load: NodeCallable
+    _load: Tuple[float, float]
 
     def __init__(self, x: float, y: float) -> None:
         self.x = x
@@ -31,12 +31,12 @@ class TrussNode:
     def get_displacement(self) -> Tuple[float, float]:
         return self._u, self._v
     
-    def set_load(self, load: NodeCallable) -> None:
-        self._load = load
+    def set_load(self, Px, Py) -> None:
+        self._load = (Px, Py)
         
     def get_load(self) -> Tuple[float, float]:
         if hasattr(self, "_load"):
-            return self._load(self.get_displacement())
+            return self._load
         else:
             return (0,0)
     

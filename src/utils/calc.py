@@ -41,3 +41,6 @@ def get_truss_y_direction(internal_node: TrussNode, external_node: TrussNode) ->
 def add_to_matrix(arr: np.array, row: int, col:int, value: float) -> None:
     current = arr[row, col]
     arr[row, col] = current + value
+    
+def get_lattice_dof(node: int, truss: int, constrain: int) -> int:
+    return 0

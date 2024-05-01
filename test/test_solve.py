@@ -83,8 +83,13 @@ class TestSolve(unittest.TestCase):
         structure = Structure(nodes, trusses)
         x = structure.solve()
         
-        print(x)
+        #print(x)
         
         # test u e v
         np.testing.assert_almost_equal([[0, 0, 0, -2.177, -3.066]], np.transpose(x[0:5]), 3)
         np.testing.assert_almost_equal([[0, 0, 0, 0, 5.876]], np.transpose(x[5:10]), 3)
+        
+        # test N
+        N = structure.get_loads()
+        print(N)
+        np.testing.assert_almost_equal([-1.088, 0, 1.088, 3.079, -1.540], N, 3)

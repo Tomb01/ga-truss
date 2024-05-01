@@ -1,8 +1,9 @@
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Callable
 import numpy as np
 from src.classes.truss import Truss, TrussNode
 from math import cos, sin, degrees
 from src.utils.calc import get_truss_x_direction, get_truss_y_direction, add_to_matrix
+from src.utils.types import FixedNodeData
 
 class Structure:
 
@@ -12,7 +13,6 @@ class Structure:
     _n_constrain: int = 0
     _A: np.array
     _b: np.array
-    _x: np.array
 
     def __init__(self, nodes: List[TrussNode], trusses: List[Truss]) -> None:
         self._nodes = nodes
@@ -45,6 +45,16 @@ class Structure:
         
     def get_DOF(self) -> int:
         raise NotImplementedError
+    
+    def _iterate_truss(self, func: Callable[[Truss], any])-> List[any]:
+        ret = map(func, self._trusses)
+        return list(ret)
+    
+    def get_loads(self) -> np.array:
+        return self._iterate_truss(lambda t: t.get_load())
+    
+    def get_stress(self) -> np.array:
+        return self._iterate_truss(lambda t: t.get_stress())
         
     def assing_index(self) -> None:
         for index in range(0, len(self._nodes)):
@@ -73,9 +83,9 @@ class Structure:
             # displacement = EA/l * sin/cos(truss angle) 
             u = k_truss*cos(alpha)
             v = k_truss*sin(alpha)
-            print("{k:n} - alpha={alpha:.3f} u={u:.3f} v={v:.3f}".format(u=cos(alpha), v=sin(alpha), alpha=degrees(alpha), k=k))
-            print("{k:n} - node {index:n}: u={u:.3f}, v={v:.3f}".format(index=i1, u=u, v=v, k=k))
-            print("{k:n} - node {index:n}: u={u:.3f}, v={v:.3f}".format(index=i2, u=-u, v=-v, k=k))
+            #print("{k:n} - alpha={alpha:.3f} u={u:.3f} v={v:.3f}".format(u=cos(alpha), v=sin(alpha), alpha=degrees(alpha), k=k))
+            #print("{k:n} - node {index:n}: u={u:.3f}, v={v:.3f}".format(index=i1, u=u, v=v, k=k))
+            #print("{k:n} - node {index:n}: u={u:.3f}, v={v:.3f}".format(index=i2, u=-u, v=-v, k=k))
             #el = input()
             # Add calculated displacement, - is because the difference (u2-u1)cos(a) + (v2-v1)sin(a)
             eq = np.zeros(m)
@@ -135,6 +145,31 @@ class Structure:
         
         return A, b   
     
-    def solve(self) -> None:
-        self._x = np.linalg.solve(self._A, self._b)
-        return self._x
+    def solve(self) -> np.array:
+        n_nodes = len(self._nodes)
+        x = np.linalg.solve(self._A, self._b)
+        x_t = x.transpose()[0]
+        print(x_t)
+        for node in self._nodes:
+            index = node.get_index()
+            node.set_displacement(x_t[index], x_t[index+n_nodes]) 
+            
+        for truss in self._trusses:
+            truss.calculate()       
+        return x
+    
+    
+def get_bound_box(fixed: List[TrussNode]) -> Tuple[float, float, float, float]:
+    min_x = 0
+    min_y = 0
+    max_x = 0
+    max_y = 0
+    for p in fixed:
+        x,y = p.get_coordinate()
+        max_x = x if x > max_x else max_x
+        max_y = y if y > max_y else max_y
+        min_x = x if x < min_x else min_x
+        min_y = y if y < min_y else min_y
+        
+    return (min_x, min_y, max_x, max_y)
+        

@@ -13,7 +13,8 @@ class Truss:
     _end_node: TrussNode
     area: float
     E: float
-    N: float
+    _N: float
+    _stress: float
     _length: float
     _inclination: float
     _absinclination: float
@@ -27,12 +28,13 @@ class Truss:
         self.calculate()
 
     def calculate(self) -> None:
+        #print("calc")
         self._inclination = calc.calculate_inclination(self._start_node, self._end_node) 
-        #print(self._inclination)               
-
-        self._start_node.set_displacement(cos(self._inclination), sin(self._inclination))
-        self._end_node.set_displacement(cos(self._inclination), sin(self._inclination))
         self._length = sqrt((self._end_node.x-self._start_node.x)**2 + (self._end_node.y-self._start_node.y)**2)
+        u2, v2 = self._end_node.get_displacement()
+        u1, v1 = self._start_node.get_displacement()
+        self._N = self.E * self.area / self._length * ((u2-u1)*cos(self._inclination)+(v2-v1)*sin(self._inclination))
+        self._stress = self._N/self.area
 
     def get_nodes(self) -> Tuple[TrussNode, TrussNode]:
         return (self._start_node, self._end_node)
@@ -42,3 +44,9 @@ class Truss:
     
     def get_length(self) -> float:
         return self._length
+    
+    def get_load(self) -> float:
+        return self._N
+    
+    def get_stress(self) -> float:
+        return self._stress

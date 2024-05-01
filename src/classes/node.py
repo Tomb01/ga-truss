@@ -23,6 +23,9 @@ class TrussNode:
         self._u = 0
         self._v = 0
         self._id = "n_" + str(uuid.uuid4())
+        
+    def get_coordinate(self) -> Tuple[float, float]:
+        return self.x, self.y
 
     def set_displacement(self, u: float, v: float) -> None:
         self._u = u

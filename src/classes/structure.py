@@ -41,7 +41,7 @@ class Structure:
         if node_list == node_check:
             return True
         else:
-            return False
+            raise ValueError("Structure not correct. Free nodes")
         
     def get_DOF(self) -> int:
         raise NotImplementedError

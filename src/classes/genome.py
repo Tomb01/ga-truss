@@ -22,34 +22,30 @@ class Phenotype:
         x_min, y_min, x_max, y_max = get_bound_box(nodes)
         x_rand = np.random.uniform(low=x_min, high=x_max, size=(node_n,))
         y_rand = np.random.uniform(low=y_min, high=y_max, size=(node_n,))
+        print(x_rand, y_rand)
         for i in range(0, len(x_rand)):
             nodes.append(TrussNode(x_rand[i], y_rand[i]))
         
-        r = 0
+        r = 0 # Number of constrains (displacement equal to zero)
         for i in range(0, len(geometric_constrains)):
             if geometric_constrains[i][2]:
                 r = r+1
             if geometric_constrains[i][3]:
                 r = r+1
                 
-        j = len(x_rand)
+        j = len(x_rand) # Number of nodes
         trusses = list()
-        # Isostatica
-        m = 2*j - r
-        for i in range(0, m-len(geometric_constrains)):
-            k = random.randrange(j)
-            trusses.append(Truss(nodes[k], nodes[k+1], area, material.E))
-            
-        for i in range(0, len(geometric_constrains)):
-            k = random.randrange(j)
-            trusses.append(Truss(nodes[k], nodes[i], area, material.E))
+        m = 2*j - r # Number of truss required for an isostatic structure
+        for i in range(0, len(nodes)):
+            k = random.randrange(len(nodes))
+            if i==k:
+                k = k + 1
+            trusses.append(Truss(nodes[i], nodes[k], area, material.E))
             
         structure = Structure(nodes, trusses)
         print(nodes)
-        #draw = Drawing()
-        #draw.draw_structure(structure)
         
-        return cls
+        return cls(structure, material)
     
     _structure: Structure
     _material: Material

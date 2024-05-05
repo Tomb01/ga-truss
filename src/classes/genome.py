@@ -17,33 +17,56 @@ def PointConstrain(x: float, y: float, x_lock: bool = True, y_lock: bool = True,
 class Phenotype:
     
     @classmethod
-    def random(cls, geometric_constrains: List[FixedNodeData], material: Material, area = 10, node_n: int = 10) -> 'Phenotype':
+    def random(cls, geometric_constrains: List[FixedNodeData], material: Material, area = 10, truss_n: int = 10) -> 'Phenotype':
         nodes = list(map(lambda p: PointConstrain(p[0], p[1], p[2], p[3], p[4], p[5]), geometric_constrains))
-        x_min, y_min, x_max, y_max = get_bound_box(nodes)
-        x_rand = np.random.uniform(low=x_min, high=x_max, size=(node_n,))
-        y_rand = np.random.uniform(low=y_min, high=y_max, size=(node_n,))
-        print(x_rand, y_rand)
-        for i in range(0, len(x_rand)):
-            nodes.append(TrussNode(x_rand[i], y_rand[i]))
+        dof = truss_n*3 # Degree of freedom
         
-        r = 0 # Number of constrains (displacement equal to zero)
+        v_e = 0 # Number of external constrains (displacement equal to zero)
         for i in range(0, len(geometric_constrains)):
             if geometric_constrains[i][2]:
-                r = r+1
+                v_e = v_e+1
             if geometric_constrains[i][3]:
-                r = r+1
+                v_e = v_e+1
                 
-        j = len(x_rand) # Number of nodes
+        n_nodes = int((dof - v_e)/2) # Minimum nodes required for isostatic structure
+        
+        x_min, y_min, x_max, y_max = get_bound_box(nodes)
+        x_rand = np.random.uniform(low=x_min, high=x_max, size=(n_nodes,))
+        y_rand = np.random.uniform(low=y_min, high=y_max, size=(n_nodes,))
+        for i in range(0, len(x_rand)):
+            nodes.append(TrussNode(x_rand[i], y_rand[i]))
+            
         trusses = list()
-        m = 2*j - r # Number of truss required for an isostatic structure
+        truss_node_match = [ [] for _ in range(len(nodes)) ]
+        print(x_rand, y_rand)
+                
         for i in range(0, len(nodes)):
             k = random.randrange(len(nodes))
             if i==k:
-                k = k + 1
+                k = k+1
+
+            truss_node_match[k].append(i)
             trusses.append(Truss(nodes[i], nodes[k], area, material.E))
             
+        free_nodes = list()
+        for i,x in enumerate(truss_node_match):
+            if len(x) <= 1:
+                free_nodes.append(i)
+        print(free_nodes)        
+        
+        for i in range(0, len(nodes)):
+            k = random.choice(free_nodes)
+            if i == k or i in truss_node_match[k]:
+                continue
+            free_nodes.remove(k)
+            truss_node_match[k].append(i)
+            print(i, k, truss_node_match)
+            trusses.append(Truss(nodes[i], nodes[k], area, material.E))
+            if len(free_nodes)==0:
+                break
+            
         structure = Structure(nodes, trusses)
-        print(nodes)
+        print(truss_node_match)
         
         return cls(structure, material)
     

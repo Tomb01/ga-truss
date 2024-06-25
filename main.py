@@ -11,10 +11,13 @@ if __name__ == "__main__":
     area = 2 #mm^2
     
     playground = PlayGround(max_epochs=100, population=100)
-    playground.play([
+    best = playground.play([
         [0, 0, True, True, 0, 1*1e6],
         [1000, 1000, True, True, 0, 1*1e6]
-    ], material, 1, area)
+    ], material, 1, area, 2, 10)
     
-    #plt.plot_structure(phenotype._structure)
-    #plt.show()
+    the_best = best[0]._structure
+    print(the_best.get_DOF())
+    the_best.check()
+    plt.plot_structure(the_best)
+    plt.show()

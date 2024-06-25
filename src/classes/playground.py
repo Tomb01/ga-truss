@@ -17,7 +17,7 @@ class PlayGround:
         material: Material,
         min_area: float,
         max_area: float,
-        truss_n_min=1,
+        truss_n_min=2,
         truss_n_max=10,
     ):
 
@@ -26,15 +26,23 @@ class PlayGround:
         
         for epoch in range(self.epochs):
             
-            random_phenotipe = [
-                Phenotype.random(
-                    geometric_constrains,
-                    material,
-                    random.uniform(min_area, max_area),
-                    random.uniform(truss_n_min, truss_n_max),
-                )
-                for _ in range(to_generate)
-            ]
+            i = 0
+            random_phenotipe = []
+            while i < to_generate:
+                try:
+                    element = Phenotype.random(
+                        geometric_constrains,
+                        material,
+                        random.uniform(min_area, max_area),
+                        random.uniform(truss_n_min, truss_n_max),
+                    ) 
+                    i = i+1
+                    random_phenotipe.append(element)
+                except ValueError as e:
+                    if str(e) == "Structure not correct. Free nodes":
+                        continue
+                    else:
+                        raise e
             
             generation = better_population + random_phenotipe
             
@@ -42,10 +50,13 @@ class PlayGround:
             mean = np.mean(score)
             better_index = np.array(score >= mean)
             better_population = list(compress(generation, better_index))
-            print(score)
+            
             
             extint = self.population - len(better_population)
             to_generate = extint
+            print(score, extint)
             
-            print("epoch {epoch}: mean score = {score}".format(epoch=epoch, score=mean))
+            print("epoch {epoch}: mean score = {score}, trashed = {extint}".format(epoch=epoch, score=mean, extint = extint))
+        
+        return better_population
 

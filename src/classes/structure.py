@@ -13,21 +13,40 @@ class Structure:
     _n_constrain: int = 0
     _A: np.array
     _b: np.array
+    _checked: bool = False
 
     def __init__(self, nodes: List[TrussNode], trusses: List[Truss]) -> None:
         self._nodes = nodes
         self._trusses = trusses
 
-        #self.check()
+        self.check()
         self.assing_index()
         self.populate()
 
     def check(self) -> bool:
-        node_check: Dict[str, bool] = {}
-        for truss in self._trusses:
+        node_check: Dict[str, int] = {}
+        found_trusses = []
+
+        for i, truss in enumerate(self._trusses):
             node = truss.get_nodes()
-            node_check[node[0].get_id()] = True
-            node_check[node[1].get_id()] = True
+            id1 = node[0].get_id()
+            id2 = node[1].get_id()
+            
+            if id1+id2 in found_trusses or id2+id1 in found_trusses:
+                del self._trusses[i]
+                continue
+            
+            found_trusses.append(id1+id2)
+            
+            if id1 in node_check:
+                node_check[id1] = node_check[id1] + 1
+            else:
+                node_check[id1] = 1
+            
+            if id2 in node_check:
+                node_check[id2] = node_check[id2] + 1
+            else:
+                node_check[id2] = 1
 
         node_list: Dict[str, bool] = {}
         for node in self._nodes:
@@ -36,15 +55,20 @@ class Structure:
             self._n_constrain = self._n_constrain + 1 if h != 0 else self._n_constrain
             self._n_constrain = self._n_constrain + 1 if r != 0 else self._n_constrain
 
-        #print(node_check, node_list)
+        #print(node_check)
 
-        if node_list == node_check:
+        if (node_list.keys() == node_check.keys()) and min(node_check.values()) > 1:
+            self._checked = True
             return True
         else:
+            self._checked = False
             raise ValueError("Structure not correct. Free nodes")
         
     def get_DOF(self) -> int:
-        return 2*len(self._nodes) - self._n_constrain - len(self._trusses)
+        if self._checked:
+            return 2*len(self._nodes) - self._n_constrain - len(self._trusses)
+        else:
+            return 1
     
     def _iterate_truss(self, func: Callable[[Truss], any])-> List[any]:
         ret = map(func, self._trusses)
@@ -146,7 +170,6 @@ class Structure:
         return A, b   
     
     def solve(self) -> np.array:
-        self.check()
         n_nodes = len(self._nodes)
         x = np.linalg.solve(self._A, self._b)
         x_t = x.transpose()[0]

@@ -65,7 +65,7 @@ class Phenotype:
             trusses.append(Truss(nodes[i], nodes[k], area, material.E))
             if len(free_nodes)==0:
                 break
-            
+        
         structure = Structure(nodes, trusses)
         #print(truss_node_match)
         
@@ -82,12 +82,11 @@ class Phenotype:
         """
         Function to score fit calculation
         """
-        
+    
         k_DOF = 1
         k_Fos = 1
         k_Mass = 1
         
-
         ########## DOF objective ##########
         # Se i DOF sono maggiori di 0 la struttura è labile -> score = 0
         # Se la matrice è singolare la struttura non ha soluzione
@@ -97,9 +96,7 @@ class Phenotype:
         except np.linalg.LinAlgError as e:
             if e == "Singular matrix":
                 k_DOF = 0
-        except ValueError as e:
-            if e == "Structure not correct. Free nodes":
-                k_DOF = 0
+                print("Singular matrix " + str(self._structure.get_DOF()))
 
         ########## FoS objective ##########
         # Ottimizzazione del valore di Fos per ogni trave.

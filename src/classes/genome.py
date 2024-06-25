@@ -38,21 +38,22 @@ class Phenotype:
             
         trusses = list()
         truss_node_match = [ [] for _ in range(len(nodes)) ]
-        print(x_rand, y_rand)
+        #print(x_rand, y_rand)
                 
         for i in range(0, len(nodes)):
             k = random.randrange(len(nodes))
             if i==k:
                 k = k+1
 
-            truss_node_match[k].append(i)
-            trusses.append(Truss(nodes[i], nodes[k], area, material.E))
+            if k < len(truss_node_match):
+                truss_node_match[k].append(i)
+                trusses.append(Truss(nodes[i], nodes[k], area, material.E))
             
         free_nodes = list()
         for i,x in enumerate(truss_node_match):
             if len(x) <= 1:
                 free_nodes.append(i)
-        print(free_nodes)        
+        #print(free_nodes)        
         
         for i in range(0, len(nodes)):
             k = random.choice(free_nodes)
@@ -60,13 +61,13 @@ class Phenotype:
                 continue
             free_nodes.remove(k)
             truss_node_match[k].append(i)
-            print(i, k, truss_node_match)
+            #print(i, k, truss_node_match)
             trusses.append(Truss(nodes[i], nodes[k], area, material.E))
             if len(free_nodes)==0:
                 break
             
         structure = Structure(nodes, trusses)
-        print(truss_node_match)
+        #print(truss_node_match)
         
         return cls(structure, material)
     
@@ -77,12 +78,42 @@ class Phenotype:
         self._structure = structure
         self._material = material
         
-    def get_score(self) -> float:
+    def get_score(self, better_Fos = 2) -> float:
         """
         Function to score fit calculation
         """
-        Fos = self._material.Re / self._structure.get_stress() # Fos = yield stress/working stres
-                
         
-def fit_function(mass: float, Fos: np.array) -> float:
-    return 0
+        k_DOF = 1
+        k_Fos = 1
+        k_Mass = 1
+        
+
+        ########## DOF objective ##########
+        # Se i DOF sono maggiori di 0 la struttura è labile -> score = 0
+        # Se la matrice è singolare la struttura non ha soluzione
+        try:
+            self._structure.solve()
+            k_DOF = 1 if self._structure.get_DOF() <= 0 else 0
+        except np.linalg.LinAlgError as e:
+            if e == "Singular matrix":
+                k_DOF = 0
+        except ValueError as e:
+            if e == "Structure not correct. Free nodes":
+                k_DOF = 0
+
+        ########## FoS objective ##########
+        # Ottimizzazione del valore di Fos per ogni trave.
+        # Con Fos < 1 la struttura si rompe -> score = 0
+        Fos = np.nan_to_num(abs(np.divide(self._material.Re, self._structure.get_stress()))) # Fos = yield stress/working stres
+        is_broken = np.any(Fos < 1)
+        if is_broken:
+            k_Fos = 0
+        else:
+            Fos_margin = Fos - better_Fos
+            Fos_margin_mean = np.mean(Fos_margin)
+            
+            k_Fos = 1/Fos_margin_mean
+        
+        return k_DOF * k_Fos * k_Mass
+                
+    

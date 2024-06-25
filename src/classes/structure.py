@@ -18,7 +18,7 @@ class Structure:
         self._nodes = nodes
         self._trusses = trusses
 
-        self.check()
+        #self.check()
         self.assing_index()
         self.populate()
 
@@ -44,7 +44,7 @@ class Structure:
             raise ValueError("Structure not correct. Free nodes")
         
     def get_DOF(self) -> int:
-        raise NotImplementedError
+        return 2*len(self._nodes) - self._n_constrain - len(self._trusses)
     
     def _iterate_truss(self, func: Callable[[Truss], any])-> List[any]:
         ret = map(func, self._trusses)
@@ -146,10 +146,11 @@ class Structure:
         return A, b   
     
     def solve(self) -> np.array:
+        self.check()
         n_nodes = len(self._nodes)
         x = np.linalg.solve(self._A, self._b)
         x_t = x.transpose()[0]
-        print(x_t)
+        #print(x_t)
         for node in self._nodes:
             index = node.get_index()
             node.set_displacement(x_t[index], x_t[index+n_nodes]) 

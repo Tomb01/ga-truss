@@ -4,6 +4,7 @@ from src.classes.truss import Truss, TrussNode
 from math import cos, sin, degrees
 from src.utils.calc import get_truss_x_direction, get_truss_y_direction, add_to_matrix
 from src.utils.types import FixedNodeData
+from collections import Counter
 
 class Structure:
 
@@ -14,10 +15,13 @@ class Structure:
     _A: np.array
     _b: np.array
     _checked: bool = False
+    _n_constrain_nodes: int = 0
+    _free_nodes: List[TrussNode]
 
-    def __init__(self, nodes: List[TrussNode], trusses: List[Truss]) -> None:
+    def __init__(self, nodes: List[TrussNode], trusses: List[Truss], n_constrain: int) -> None:
         self._nodes = nodes
         self._trusses = trusses
+        self._n_constrain_nodes = n_constrain
 
         self.check()
         self.assing_index()
@@ -50,7 +54,7 @@ class Structure:
 
         node_list: Dict[str, bool] = {}
         for node in self._nodes:
-            node_list[node.get_id()] = True
+            node_list[node.get_id()] = node
             h,r = node.get_constrain()
             self._n_constrain = self._n_constrain + 1 if h != 0 else self._n_constrain
             self._n_constrain = self._n_constrain + 1 if r != 0 else self._n_constrain
@@ -61,8 +65,17 @@ class Structure:
             self._checked = True
             return True
         else:
+            total_nodes = list(node_check.keys()) +  list(node_list.keys())
+            c = Counter(total_nodes)
+            free_ids = [k for k, v in c.items() if v == 1]
+            self._free_nodes = [node_list[x] for x in free_ids]
             self._checked = False
-            raise ValueError("Structure not correct. Free nodes")
+            self.fix()
+            #raise ValueError("Structure not correct. Free nodes")
+        
+    def fix(self) -> None:
+        if not self._checked:
+            self._nodes = [x for x in self._nodes if x not in self._free_nodes]
         
     def get_DOF(self) -> int:
         if self._checked:

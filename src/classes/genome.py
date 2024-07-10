@@ -10,19 +10,22 @@ import numpy as np
 
 def PointConstrain(x: float, y: float, x_lock: bool = True, y_lock: bool = True, x_load: float = 0, y_load: float = 0):
     node = TrussNode(x, y)
-    Constrain(lambda : (1 if x_lock else 0, 1 if y_lock else 0), node)
+    if x_lock or y_lock:
+        Constrain(lambda : (1 if x_lock else 0, 1 if y_lock else 0), node)
     Load(node, x_load, y_load)
     return node
 
 class Phenotype:
     
     @classmethod
-    def random(cls, geometric_constrains: List[FixedNodeData], material: Material, area = 10, truss_n: int = 10) -> 'Phenotype':
+    def random(cls, geometric_constrains: List[FixedNodeData], material: Material, max_area = 10, truss_n: int = 10) -> 'Phenotype':
         nodes = list(map(lambda p: PointConstrain(p[0], p[1], p[2], p[3], p[4], p[5]), geometric_constrains))
-        dof = truss_n*3 # Degree of freedom
+        n_constrain_nodes = len(nodes)
+        dof = truss_n*2 # Degree of freedom
         
         v_e = 0 # Number of external constrains (displacement equal to zero)
-        for i in range(0, len(geometric_constrains)):
+        g_n = len(geometric_constrains)
+        for i in range(0, g_n):
             if geometric_constrains[i][2]:
                 v_e = v_e+1
             if geometric_constrains[i][3]:
@@ -38,6 +41,7 @@ class Phenotype:
             
         trusses = list()
         truss_node_match = [ [] for _ in range(len(nodes)) ]
+        area = random.uniform(0.01, max_area)
         #print(x_rand, y_rand)
                 
         for i in range(0, len(nodes)):
@@ -66,13 +70,14 @@ class Phenotype:
             if len(free_nodes)==0:
                 break
         
-        structure = Structure(nodes, trusses)
+        structure = Structure(nodes, trusses, n_constrain_nodes)
         #print(truss_node_match)
         
         return cls(structure, material)
     
     _structure: Structure
     _material: Material
+    _Fos: np.array
     
     def __init__(self, structure: Structure, material: Material):
         self._structure = structure
@@ -101,7 +106,7 @@ class Phenotype:
         ########## FoS objective ##########
         # Ottimizzazione del valore di Fos per ogni trave.
         # Con Fos < 1 la struttura si rompe -> score = 0
-        Fos = np.nan_to_num(abs(np.divide(self._material.Re, self._structure.get_stress()))) # Fos = yield stress/working stres
+        Fos = self.get_Fos()
         is_broken = np.any(Fos < 1)
         if is_broken:
             k_Fos = 0
@@ -113,4 +118,16 @@ class Phenotype:
         
         return k_DOF * k_Fos * k_Mass
                 
+    def get_Fos(self, better_fos: float = 1) -> np.array:
+        # Fos = yield stress/working stress
+        return np.nan_to_num(abs(np.divide(self._material.Re, self._structure.get_stress())))
     
+    def split(self, k_split: float):
+        # Order truss based on Fos
+        Fos = self.get_Fos()
+        fos_order = Fos.argsort()
+        trusses = [self._structure._trusses[i] for i in fos_order]
+        split_point = int(len(trusses)*(1-k_split))
+        
+        better_trusses = trusses[0:split_point]
+        self._structure._trusses = better_trusses

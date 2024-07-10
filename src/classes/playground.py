@@ -33,8 +33,8 @@ class PlayGround:
                     element = Phenotype.random(
                         geometric_constrains,
                         material,
-                        random.uniform(min_area, max_area),
-                        random.uniform(truss_n_min, truss_n_max),
+                        max_area,
+                        random.randint(truss_n_min, truss_n_max),
                     ) 
                     i = i+1
                     random_phenotipe.append(element)
@@ -50,8 +50,7 @@ class PlayGround:
             mean = np.mean(score)
             better_index = np.array(score >= mean)
             better_population = list(compress(generation, better_index))
-            
-            
+                
             extint = self.population - len(better_population)
             to_generate = extint
             print(score, extint)
@@ -60,3 +59,4 @@ class PlayGround:
         
         return better_population
 
+    

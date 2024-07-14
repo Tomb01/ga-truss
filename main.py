@@ -7,9 +7,10 @@ np.set_printoptions(precision=3, suppress=True)
 nodes = np.array([
     Node(0, 0, True, True, 0, 0),
     Node(1, 1, False, False, 1, 0),
-    Node(1, 0, True, True, 0, 0)
+    Node(1, 0, True, True, 0, 0),
+    Node(2, 0, True, True, 0, 0)
 ])
-adj = np.array([[0,1,0], [1,0,1], [0,1,0]])
+adj = np.array([[0,1,0,0], [1,0,1,1], [0,1,0,0], [0,1,0,0]])
 
 n = len(nodes)
 k = len(adj)

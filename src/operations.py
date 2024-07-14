@@ -35,8 +35,8 @@ def constrain(nodes: np.array) -> Tuple[np.array, np.array]:
 def loads(nodes: np.array) -> Tuple[np.array, np.array]:
     return nodes[:,8], nodes[:,9] 
 
-def populateA(nodes, trusses, elastic_modulus) -> np.array:
-    return A
+def disp(k_disp, trusses) -> np.array:
+    return k_disp - np.matmul(k_disp, trusses[0])*np.identity(trusses.shape[1])
 
 def solve(nodes, trusses, elastic_modulus) -> np.array:
     dl = distance(nodes, trusses)
@@ -44,38 +44,44 @@ def solve(nodes, trusses, elastic_modulus) -> np.array:
     K = np.divide(elastic_modulus*trusses[1], l, out=np.zeros_like(l), where=trusses[1]!=0)
     a = inclination(dl)
     
-    # Make A matrxi
-    Ku = K[0]
-    Kv = K[1]
-    Vx, Vy = constrain(nodes)
-    
     n = len(nodes)
+    Ku = K*np.cos(a)
+    Kv = K*np.sin(a)
+    
+    Ux = disp(Ku*np.cos(a), trusses)
+    Uy = disp(Ku*np.sin(a), trusses)
+    Vx = disp(Kv*np.cos(a), trusses)
+    Vy = disp(Kv*np.sin(a), trusses)
+    
+    Cx, Cy = constrain(nodes)
+
     Ro = np.eye(n,n)
-    Rx = np.multiply(Ro, Vx)
-    Ry = np.multiply(Ro, Vy)
+    Rx = np.multiply(Ro, Cx)
+    Ry = np.multiply(Ro, Cy)
     
-    Ku = (Ku - np.matmul(Ku, trusses[0])*np.identity(3))
-    Kv = (Kv - np.matmul(Kv, trusses[0])*np.identity(3))
+    A = np.zeros((4*n, 4*n))
     
-    Dx = np.concatenate([Ku*np.cos(a),Kv*np.cos(a),Rx,np.zeros((n,n))]).transpose()
-    Dy = np.concatenate([Ku*np.sin(a),Kv*np.sin(a),np.zeros((n,n)),Ry]).transpose()
-    Rx = np.concatenate([Rx, np.zeros((3*n, n))]).transpose()
-    Ry = np.concatenate([np.zeros((n, n)), Ry, np.zeros((2*n, n))]).transpose()
+    A[0:n, 0:n] = Ux    
+    A[0:n, n:2*n] = Uy
+    A[0:n, 2*n:3*n] = Rx
     
-    print(Dy)
+    A[n:2*n, 0:n] = Vx    
+    A[n:2*n, n:2*n] = Vy
+    A[n:2*n, 3*n:4*n] = Ry
     
-    A = np.vstack((Dx, Dy, Rx, Ry))
+    A[2*n:3*n, 0:n] = Rx
+    A[3*n:4*n, n:2*n] = Ry
+    
     mask_row = ~np.all(A==0, axis=0)
     mask_col = ~np.all(A==0, axis=1)
     A = A[mask_row]
     A = A[:,mask_col]
-    #print(A, A.shape)
     
     Bx, By = loads(nodes)
-    B = np.concatenate([Bx,By])
+    B = -np.concatenate([Bx,By])
     
     B.resize((A.shape[1]))
-    #print(np.linalg.det(A))
-    
-    #x = np.linalg.solve(A, B)
-    return None
+
+    print(A)
+    x = np.linalg.solve(A,B)
+    return x

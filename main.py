@@ -2,6 +2,8 @@ from src.operations import trussK, solve
 from src.structure import Node
 import numpy as np
 
+np.set_printoptions(precision=3, suppress=True)
+
 nodes = np.array([
     Node(0, 0, True, True, 0, 0),
     Node(1, 1, False, False, 1, 0),

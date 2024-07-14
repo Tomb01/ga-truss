@@ -1,6 +1,7 @@
 import numpy as np
 from src.types import Node
 from typing import Tuple
+from scipy.linalg import lu
 
 def connections(m: np.array, adj: np.array) -> np.array:
     if len(adj.shape) > 2:
@@ -38,38 +39,43 @@ def populateA(nodes, trusses, elastic_modulus) -> np.array:
     return A
 
 def solve(nodes, trusses, elastic_modulus) -> np.array:
+    dl = distance(nodes, trusses)
+    l = lenght(dl)
+    K = np.divide(elastic_modulus*trusses[1], l, out=np.zeros_like(l), where=trusses[1]!=0)
+    a = inclination(dl)
+    
     # Make A matrxi
-    Kx, Ky = trussK(nodes, trusses, elastic_modulus)
+    Ku = K[0]
+    Kv = K[1]
     Vx, Vy = constrain(nodes)
-    adju = np.triu(trusses[0])
     
     n = len(nodes)
     Ro = np.eye(n,n)
     Rx = np.multiply(Ro, Vx)
     Ry = np.multiply(Ro, Vy)
     
-    Rx = np.concatenate([Rx, np.zeros((n,n))])
-    Ry = np.concatenate([np.zeros((n,n)), Ry])
+    Ku = (Ku - np.matmul(Ku, trusses[0])*np.identity(3))
+    Kv = (Kv - np.matmul(Kv, trusses[0])*np.identity(3))
     
-    R = np.hstack((Rx, Ry))
+    Dx = np.concatenate([Ku*np.cos(a),Kv*np.cos(a),Rx,np.zeros((n,n))]).transpose()
+    Dy = np.concatenate([Ku*np.sin(a),Kv*np.sin(a),np.zeros((n,n)),Ry]).transpose()
+    Rx = np.concatenate([Rx, np.zeros((3*n, n))]).transpose()
+    Ry = np.concatenate([np.zeros((n, n)), Ry, np.zeros((2*n, n))]).transpose()
     
-    Au = np.multiply(Kx - np.matmul(Kx, trusses[0])*np.identity(3), np.matmul(adju, Vx))
-    Av = np.multiply(Ky - np.matmul(Ky, trusses[0])*np.identity(3), np.matmul(adju, Vy))
-    A = np.concatenate([Au,Av])
-    A = np.hstack((A, R))
+    print(Dy)
     
-    #d_idx = np.argwhere(np.all(A[..., :] == 0, axis=0))
-    #A = np.delete(A, d_idx, axis=1)
-    print(A) 
-
+    A = np.vstack((Dx, Dy, Rx, Ry))
+    mask_row = ~np.all(A==0, axis=0)
+    mask_col = ~np.all(A==0, axis=1)
+    A = A[mask_row]
+    A = A[:,mask_col]
+    #print(A, A.shape)
+    
     Bx, By = loads(nodes)
     B = np.concatenate([Bx,By])
     
-    #Normalize dimension
-    e, i = A.shape
-    #A = np.stack((A, np.zeros((i-e, i))))
-    print(i-e)
-    B.resize((i))
-    #print(B.shape, A.shape)
-    x = np.linalg.solve(A, B)
+    B.resize((A.shape[1]))
+    #print(np.linalg.det(A))
+    
+    #x = np.linalg.solve(A, B)
     return None

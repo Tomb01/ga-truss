@@ -8,15 +8,17 @@ nodes = np.array([
     Node(0, 0, True, True, 0, 0),
     Node(1, 1, False, False, 1, 0),
     Node(1, 0, True, True, 0, 0),
-    Node(2, 0, True, True, 0, 0)
 ])
-adj = np.array([[0,1,0,0], [1,0,1,1], [0,1,0,0], [0,1,0,0]])
+adj = np.array([[0,1,0], [1,0,1], [0,1,0]])
 
 n = len(nodes)
 k = len(adj)
 
-trusses = np.zeros((3, n, n))
+trusses = np.zeros((4, n, n))
 trusses[0] = adj
 trusses[1] = adj #areas
 
-print(solve(nodes, trusses, 1))
+solve(nodes, trusses, 1)
+print(trusses[3])
+
+

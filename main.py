@@ -1,6 +1,7 @@
-from src.operations import trussK, solve
+from src.operations import solve
 from src.structure import Node
 import numpy as np
+from src.plot import plot_structure, show
 
 np.set_printoptions(precision=3, suppress=True)
 
@@ -19,6 +20,7 @@ trusses[0] = adj
 trusses[1] = adj #areas
 
 solve(nodes, trusses, 1)
-print(trusses[3])
 
+plot_structure(nodes, trusses)
+show()
 

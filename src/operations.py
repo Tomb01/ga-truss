@@ -9,7 +9,7 @@ def connections(m: np.array, adj: np.array) -> np.array:
 
 def repeat(m: np.array) -> np.array:
     return np.swapaxes([m]*(m.shape[0]), 0, 2)
-
+    
 def distance(nodes: np.array, trusses: np.array):
     all_nodes = repeat(nodes)
     return connections(np.swapaxes(all_nodes, 2, 1) - all_nodes , trusses)
@@ -28,6 +28,9 @@ def loads(nodes: np.array) -> Tuple[np.array, np.array]:
 
 def disp(k_disp, trusses) -> np.array:
     return k_disp - np.matmul(k_disp, trusses[0])*np.identity(trusses.shape[1])
+
+def make_sym(m: np.array) -> np.array:
+    return m + m.T - np.diag(np.diag(m))
 
 def solve(nodes, trusses, elastic_modulus) -> np.array:
     # Calculation of trusses lenghts and inclinations
@@ -107,3 +110,15 @@ def solve(nodes, trusses, elastic_modulus) -> np.array:
     trusses[3] = np.divide(trusses[2], trusses[1], out=np.zeros_like(trusses[1]), where=trusses[1]!=0)
 
     return nodes, trusses
+
+def pad_with_zeros(A, r, c):
+    out = np.zeros((r, c))
+    r_, c_ = np.shape(A)
+    out[0:r_, 0:c_] = A
+    return out
+
+def upper_tri_masking(A):
+    m = A.shape[0]
+    r = np.arange(m)
+    mask = r[:,None] < r
+    return A[mask]

@@ -1,22 +1,37 @@
 import numpy as np  
 from random import randrange, uniform
 from src.plot import plot_structure
-from src.operations import solve
-    
+from src.operations import solve, make_sym, distance, lenght
+   
 def Node(x: float, y: float, vx: bool = False, vz: bool = False, Px: float = 0, Pz: float = 0):
-    return np.array([x,y,0,0,int(vx),int(vz),0,0,Px,Pz], np.float64)
+    return np.array([x,y,0,0,int(vx),int(vz),0,0,Px,Pz,0], np.float64)
+
+def encode_innovation(x1, x2, y1, y2) -> int:
+    str = "{x1:.6f}.{y1:.6f}.{x2:.6f}.{y2:.6f}".format(x1=x1, x2=x2, y1=y1, y2=y2)
+    bytestring = str.encode('utf-8')
+    return int.from_bytes(bytestring, 'little')
+
+def decode_innovations(innovation: int):
+    bytestring = innovation.to_bytes((innovation.bit_length() + 7) // 8, 'little')
+    str = bytestring.decode('utf-8')
+    comp = str.split(".")
+    return [float(comp[0]), float(comp[1]), float(comp[2]), float(comp[3]), float(comp[4])]
 
 class Structure:
     
+    _reactions: int
     elastic_modulus: float
     _n_constrain: int
     _nodes: np.array
     _trusses: np.array
+    _valid: bool
     
     def __init__(self, contrain_nodes: np.array, elastic_modulus = 1):
         self._nodes = np.array(contrain_nodes)
         self._n_constrain = len(self._nodes)
         self.elastic_modulus = elastic_modulus
+        self._reactions = np.sum(self._nodes[:,4:6])
+        self._valid = False
     
     def init_random(self, max_rep = 2, max_nodes = 10, area = [0,1]):
         max_x = np.amax(self._nodes[:,0])*max_rep
@@ -25,7 +40,7 @@ class Structure:
         n = randrange(0, max_nodes) + self._n_constrain
         self._nodes.resize((n, self._nodes.shape[1]))
         
-        self._trusses = np.zeros((5,n,n))
+        self._trusses = np.zeros((6,n,n))
         for i in range(self._n_constrain,n):
             x = uniform(-max_x, max_x)
             y = uniform(-max_y, max_y)
@@ -35,29 +50,57 @@ class Structure:
         rdn_adj[0] = np.triu(np.random.choice([0,1], size=(n,n)))
         rdn_adj[1] = np.random.uniform(area[0], area[1], size=(n,n))
 
-        self._trusses[0] = rdn_adj[0] + rdn_adj[0].T - np.diag(np.diag(rdn_adj[0]))
+        self._trusses[0] = make_sym(rdn_adj[0])
         np.fill_diagonal(self._trusses[0], 0) # Delete recursive connections
         self._trusses[1] = rdn_adj[1]*self._trusses[0]
         
+        self.set_innovations()
+
     def check(self) -> bool:
         # Check invalid structure -> DOF > 0
         n = len(self._nodes)
         node_edge_count = np.sum(self._trusses[0], axis=1)
         min_edge = 3 if self._n_constrain == n else np.min(node_edge_count[self._n_constrain:])
-        total_edge = np.sum(self._trusses[0])/2
-        print(self._trusses[0], total_edge)
-        if min_edge < 2 or total_edge <= n:
+        #print(self._trusses[0])
+        if min_edge < 2 or self.get_DOF()>0:
             return False
         else:
             return True
         
+    def get_DOF(self) -> int:
+        return 2*len(self._nodes) - self.get_edge_count() - self._reactions
+    
+    def get_edge_count(self) -> int:
+        return np.sum(self._trusses[0])/2
+        
     def solve(self):
         if self.check():
             solve(self._nodes, self._trusses, self.elastic_modulus)
+            self._valid = True
         else:
+            self._valid = False
             raise ValueError("Invalid structure")
-        #solve(self._nodes, self._trusses, self.elastic_modulus)
+        
+    def set_innovations(self):
+        n = len(self._nodes)
+        
+        for i in range(0,n):
+            self._nodes[i,10] = encode_innovation(self._nodes[i,0], 0, self._nodes[i,1], 0)
+            for j in range(0,n):
+                    self._trusses[5,i,j] = encode_innovation(self._nodes[i,0], self._nodes[j,0], self._nodes[i,1], self._nodes[j,1])
+
+        self._trusses[5] = make_sym(self._trusses[5])
+        
+    def get_innovations(self) -> np.array:
+        return self._trusses[5], self._nodes[:,10]
     
-    def plot(self):
-        plot_structure(self._nodes, self._trusses, self.elastic_modulus)
+    def get_fitness(self, node_mass_k = 1) -> np.array:
+        dl = distance(self._nodes, self._trusses)
+        l = lenght(dl)
+        mass = dl*l
+        print(mass)
+        mass_sum = np.sum(mass)
+    
+    def plot(self, axis, row = 0, col = 0, color = "blue"):
+        plot_structure(self._nodes, self._trusses, self._n_constrain, axis, row, col, color)
         

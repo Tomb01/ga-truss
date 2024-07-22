@@ -16,11 +16,10 @@ def plot_structure(nodes: np.array, trusses: np.array, constrain: int, axis, row
     
     n = len(nodes)
     for i in range(0, n):
-        
         plot_node(plot, nodes[i], 20 if i<constrain else 5, index=i)
         conn = adj[i]
         for j in range(0, n):
-            if conn[j]:
+            if conn[j] == 1:
                 s_x = nodes[i,0]
                 e_x = nodes[j,0]
                 s_y = nodes[i,1]

@@ -7,14 +7,14 @@ def Node(x: float, y: float, vx: bool = False, vz: bool = False, Px: float = 0, 
     return np.array([x,y,0,0,int(vx),int(vz),0,0,Px,Pz,0], np.float64)
 
 def encode_innovation(x1, x2, y1, y2) -> int:
-    str = "{x1:.6f}.{y1:.6f}.{x2:.6f}.{y2:.6f}".format(x1=x1, x2=x2, y1=y1, y2=y2)
-    bytestring = str.encode('utf-8')
-    return int.from_bytes(bytestring, 'little')
+    return "{x1:.6f}-{y1:.6f}-{x2:.6f}-{y2:.6f}".format(x1=x1, x2=x2, y1=y1, y2=y2)
+    #bytestring = str.encode('utf-8')
+    #return int.from_bytes(bytestring, 'big')
 
-def decode_innovations(innovation: int):
-    bytestring = innovation.to_bytes((innovation.bit_length() + 7) // 8, 'little')
-    str = bytestring.decode('utf-8')
-    comp = str.split(".")
+def decode_innovations(innovation: str):
+    #bytestring = innovation.to_bytes((innovation.bit_length() + 7) // 8, 'big')
+    #str = bytestring.decode('utf-8')
+    comp = innovation.split("-")
     return [float(comp[0]), float(comp[1]), float(comp[2]), float(comp[3]), float(comp[4])]
 
 class Structure:
@@ -25,6 +25,7 @@ class Structure:
     _nodes: np.array
     _trusses: np.array
     _valid: bool
+    _innovations: np.array
     
     def __init__(self, contrain_nodes: np.array, elastic_modulus = 1):
         self._nodes = np.array(contrain_nodes)
@@ -32,6 +33,11 @@ class Structure:
         self.elastic_modulus = elastic_modulus
         self._reactions = np.sum(self._nodes[:,4:6])
         self._valid = False
+        
+    def init(self, nodes: np.array):
+        self._nodes = np.vstack((self._nodes, nodes))
+        n = len(self._nodes)
+        self._trusses = np.zeros((5, n, n))
     
     def init_random(self, max_rep = 2, max_nodes = 10, area = [0,1]):
         max_x = np.amax(self._nodes[:,0])*max_rep
@@ -40,7 +46,7 @@ class Structure:
         n = randrange(0, max_nodes) + self._n_constrain
         self._nodes.resize((n, self._nodes.shape[1]))
         
-        self._trusses = np.zeros((6,n,n))
+        self._trusses = np.zeros((5,n,n))
         for i in range(self._n_constrain,n):
             x = uniform(-max_x, max_x)
             y = uniform(-max_y, max_y)
@@ -74,32 +80,40 @@ class Structure:
         return np.sum(self._trusses[0])/2
         
     def solve(self):
+        self.set_innovations()
         if self.check():
-            solve(self._nodes, self._trusses, self.elastic_modulus)
-            self._valid = True
+            try:
+                solve(self._nodes, self._trusses, self.elastic_modulus)
+                self._valid = True
+            except Exception:
+                self._valid = False
         else:
             self._valid = False
-            raise ValueError("Invalid structure")
+            #raise ValueError("Invalid structure")
         
     def set_innovations(self):
         n = len(self._nodes)
+        self._innovations = np.empty((n,n), dtype=np.object_)
         
         for i in range(0,n):
-            self._nodes[i,10] = encode_innovation(self._nodes[i,0], 0, self._nodes[i,1], 0)
+            #self._nodes[i,10] = encode_innovation(self._nodes[i,0], 0, self._nodes[i,1], 0)
             for j in range(0,n):
-                    self._trusses[5,i,j] = encode_innovation(self._nodes[i,0], self._nodes[j,0], self._nodes[i,1], self._nodes[j,1])
+                if i!=j:
+                    self._innovations[i,j] = encode_innovation(self._nodes[i,0], self._nodes[j,0], self._nodes[i,1], self._nodes[j,1])
+                    self._innovations[j,i] = self._innovations[i,j]
 
-        self._trusses[5] = make_sym(self._trusses[5])
+        #self._i[5] = make_sym(self._trusses[5])
         
     def get_innovations(self) -> np.array:
-        return self._trusses[5], self._nodes[:,10]
+        return self._innovations
     
     def get_fitness(self, node_mass_k = 1) -> np.array:
         dl = distance(self._nodes, self._trusses)
         l = lenght(dl)
         mass = dl*l
-        print(mass)
+        #print(mass)
         mass_sum = np.sum(mass)
+        return mass_sum
     
     def plot(self, axis, row = 0, col = 0, color = "blue"):
         plot_structure(self._nodes, self._trusses, self._n_constrain, axis, row, col, color)

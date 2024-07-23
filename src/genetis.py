@@ -46,3 +46,8 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int) -> Struc
     #print(child._trusses[0])
     
     return child
+
+def fit(k_tuple) -> float:
+    k_structure, k_mass, k_Fos = k_tuple
+    #print(k_tuple)
+    return k_structure * (k_mass + k_Fos)

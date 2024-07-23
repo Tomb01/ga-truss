@@ -39,11 +39,11 @@ class Structure:
         n = len(self._nodes)
         self._trusses = np.zeros((5, n, n))
     
-    def init_random(self, max_rep = 2, max_nodes = 10, area = [0,1]):
+    def init_random(self, max_rep = 2, max_nodes = [0,10], area = [0,1]):
         max_x = np.amax(self._nodes[:,0])*max_rep
         max_y = np.amax(self._nodes[:,1])*max_rep
         
-        n = randrange(0, max_nodes) + self._n_constrain
+        n = randrange(max_nodes[0], max_nodes[1]) + self._n_constrain
         self._nodes.resize((n, self._nodes.shape[1]))
         
         self._trusses = np.zeros((5,n,n))
@@ -53,7 +53,7 @@ class Structure:
             self._nodes[i] = Node(x, y)
             
         rdn_adj = np.zeros((2,n,n))
-        rdn_adj[0] = np.triu(np.random.choice([0,1], size=(n,n)))
+        rdn_adj[0] = np.triu(np.random.choice([1,1], size=(n,n)))
         rdn_adj[1] = np.random.uniform(area[0], area[1], size=(n,n))
 
         self._trusses[0] = make_sym(rdn_adj[0])
@@ -61,6 +61,25 @@ class Structure:
         self._trusses[1] = rdn_adj[1]*self._trusses[0]
         
         self.set_innovations()
+        
+    def init_valid(self, max_try = 100, max_rep = 2, max_nodes = [0,10], area = [0,1]):
+        for i in range(0, max_try):
+            #print(i)
+            if i == max_try-1 and not self._valid:
+                print(i)
+                raise Exception("Invalid try")
+            try:
+                self.init_random(max_rep, max_nodes, area)
+                self.solve()
+                if not self._valid:
+                    continue
+                i = i+1
+            except Exception as e:
+                if e == "Invalid structure":
+                    continue
+                else:
+                    raise e
+                
 
     def check(self) -> bool:
         # Check invalid structure -> DOF > 0
@@ -107,13 +126,32 @@ class Structure:
     def get_innovations(self) -> np.array:
         return self._innovations
     
-    def get_fitness(self, node_mass_k = 1) -> np.array:
+    def get_fitness(self, yield_stess =1, node_mass_k = 1, Fos_target = 2) -> np.array:
         dl = distance(self._nodes, self._trusses)
         l = lenght(dl)
         mass = dl*l
-        #print(mass)
-        mass_sum = np.sum(mass)
-        return mass_sum
+        
+        # K structure -> if structure is not valid Ks = 0
+        Ks = int(self._valid)
+        
+        # better when Fos is like Fos_target, Fos_target - Fos is like zeros
+        Fos = np.abs(np.divide(yield_stess, self._trusses[3], out=np.zeros_like(self._trusses[3]), where=self._trusses[0]!=0)) 
+        Fos = Fos.ravel()
+        conn = np.argwhere(self._trusses[0].ravel() == 1)
+        Fos = Fos[conn]
+        min_Fos = np.min(Fos)
+        if min_Fos < 1:
+            # truss collapse
+            Ks = 0
+        
+        Fos_mean = np.mean(Fos) - Fos_target
+        
+        # Better mass when is minimal
+        mass_sum = np.sum(mass) + len(self._nodes)*node_mass_k
+        
+        # K mass -> total mass
+        # K Fos -> fos mean, if fos mean 
+        return Ks, 1/mass_sum, 1/Fos_mean
     
     def plot(self, axis, row = 0, col = 0, color = "blue"):
         plot_structure(self._nodes, self._trusses, self._n_constrain, axis, row, col, color)

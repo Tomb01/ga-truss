@@ -1,5 +1,5 @@
 import numpy as np  
-from random import randrange, uniform
+from random import randrange, uniform, sample
 from src.plot import plot_structure
 from src.operations import solve, make_sym, distance, lenght
    
@@ -53,10 +53,18 @@ class Structure:
             self._nodes[i] = Node(x, y)
             
         rdn_adj = np.zeros((2,n,n))
-        rdn_adj[0] = np.triu(np.random.choice([1,1], size=(n,n)))
+        
+        #adj = np.eye(n) + np.random.choice([1,1], size=(n,n))
+        #adj[adj == 2] = 0
+        #np.random.shuffle(adj)
+        
+        adj = np.random.uniform(0, 1, size=(n,n))
+        adj[adj > 0.1] = 1
+        adj[adj != 1] = 0
+        rdn_adj[0] = adj
         rdn_adj[1] = np.random.uniform(area[0], area[1], size=(n,n))
 
-        self._trusses[0] = make_sym(rdn_adj[0])
+        self._trusses[0] = make_sym(np.triu(rdn_adj[0]))
         np.fill_diagonal(self._trusses[0], 0) # Delete recursive connections
         self._trusses[1] = rdn_adj[1]*self._trusses[0]
         
@@ -85,9 +93,21 @@ class Structure:
         # Check invalid structure -> DOF > 0
         n = len(self._nodes)
         node_edge_count = np.sum(self._trusses[0], axis=1)
-        min_edge = 3 if self._n_constrain == n else np.min(node_edge_count[self._n_constrain:])
+        #min_edge = 3 if self._n_constrain == n else np.min(node_edge_count[self._n_constrain:])
+        # Repair disjoint node
+        for r in np.argwhere(node_edge_count<2):
+            r = int(r)
+            if n-r >= 2 - node_edge_count[r]:
+                c = [n-1]
+            else:
+                c = sample(range(r, n), int(2 - node_edge_count[r]))
+
+            print(c, n, r)
+            self._trusses[0, int(r), c] = 1
+            self._trusses[0, c, int(r)] = 1
+            
         #print(self._trusses[0])
-        if min_edge < 2 or self.get_DOF()>0:
+        if self.get_DOF()>0 and self._n_constrain != n:
             return False
         else:
             return True
@@ -133,25 +153,30 @@ class Structure:
         
         # K structure -> if structure is not valid Ks = 0
         Ks = int(self._valid)
+        Fos_mean = 0
+        #print(self._trusses[0])
         
-        # better when Fos is like Fos_target, Fos_target - Fos is like zeros
-        Fos = np.abs(np.divide(yield_stess, self._trusses[3], out=np.zeros_like(self._trusses[3]), where=self._trusses[0]!=0)) 
-        Fos = Fos.ravel()
-        conn = np.argwhere(self._trusses[0].ravel() == 1)
-        Fos = Fos[conn]
-        min_Fos = np.min(Fos)
-        if min_Fos < 1:
-            # truss collapse
-            Ks = 0
+        if self._valid:
+            
+            # better when Fos is like Fos_target, Fos_target - Fos is like zeros
+            Fos = np.abs(np.divide(yield_stess, self._trusses[3], out=np.zeros_like(self._trusses[3]), where=self._trusses[0]!=0)) 
+            Fos = Fos.ravel()
+            conn = np.argwhere(self._trusses[0].ravel() == 1)
+            #print(conn)
+            Fos = Fos[conn]
+            min_Fos = np.min(Fos)
+            if min_Fos < 1:
+                # truss collapse
+                Ks = 1
         
-        Fos_mean = np.mean(Fos) - Fos_target
+            Fos_mean = np.mean(Fos) - Fos_target
         
         # Better mass when is minimal
         mass_sum = np.sum(mass) + len(self._nodes)*node_mass_k
         
         # K mass -> total mass
         # K Fos -> fos mean, if fos mean 
-        return Ks, 1/mass_sum, 1/Fos_mean
+        return Ks, mass_sum, Fos_mean
     
     def plot(self, axis, row = 0, col = 0, color = "blue"):
         plot_structure(self._nodes, self._trusses, self._n_constrain, axis, row, col, color)

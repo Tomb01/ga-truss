@@ -3,8 +3,14 @@ import numpy as np
 from src.operations import upper_tri_masking, pad_with_zeros
 import random
 
-def crossover(parent1: Structure, parent2: Structure, constrain_n: int) -> Structure:
+def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: float, fit2: float) -> Structure:
     # parent 1 is dominant
+    if fit1 < fit2:
+        # swamp parent
+        swamp = parent1
+        parent1 = parent2
+        parent2 = swamp
+        
     innov1 = parent1.get_innovations()
     innov2 = parent2.get_innovations()
     
@@ -27,7 +33,6 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int) -> Struc
     common_idx = np.nonzero(np.in1d(genome1, genome2))[0]
     common = np.zeros(k, dtype=bool)
     common[common_idx] = True
-    #print(genome1)
     
     for i in range(0, k):
         if common[i]:
@@ -42,12 +47,15 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int) -> Struc
             child._trusses[0, p1_c, p1_r] = state
             child._trusses[1, p1_r, p1_c] = area
             child._trusses[1, p1_c, p1_r] = area
-            
-    #print(child._trusses[0])
+        else:
+            if fit1 == fit2:
+                print("here")
     
     return child
 
 def fit(k_tuple) -> float:
     k_structure, k_mass, k_Fos = k_tuple
-    #print(k_tuple)
-    return k_structure * (k_mass + k_Fos)
+    if k_structure == 0:
+        return 0
+    else:
+        return k_structure * (k_mass + k_Fos)

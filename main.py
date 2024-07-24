@@ -12,7 +12,7 @@ problem = [
     Node(1,0,True,True,0,0)
 ]
 
-max_epoch = 10
+max_epoch = 100
 plot_interval = int(max_epoch/4)
 figure, axis = plt.subplots(1,max_epoch//plot_interval+1)
 #s.plot(axis)

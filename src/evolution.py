@@ -23,9 +23,9 @@ def epoch(problem: np.array, n_population=100, yield_stress = 1, to_keep = 0.5,e
             fitness[p] = fit(population[p].get_fitness(yield_stess=yield_stress))
         
         # Order population by fitness
-        current_fit = np.min(fitness)
+        current_fit = np.max(fitness)
         print(e, current_fit)
-        fit_index = np.argsort(fitness)
+        fit_index = np.argsort(-fitness)
         fit_population = population[fit_index]
         fitness = fitness[fit_index]
         first_kill = np.where(fitness == 0)[0]

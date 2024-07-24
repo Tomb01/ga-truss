@@ -51,23 +51,24 @@ class Structure:
             x = uniform(-max_x, max_x)
             y = uniform(-max_y, max_y)
             self._nodes[i] = Node(x, y)
+        
+        # struttura al più stabile m = 2n
+        m = 2*n
+        d = np.sum(np.triu(np.ones(n)))-n
+        if m < d:
+            triu = np.concatenate([np.ones(m), np.zeros(int(d-m))])
+            np.random.shuffle(triu)
+        else:
+            triu = np.ones(int(d))
             
-        rdn_adj = np.zeros((2,n,n))
+        #print(n, m, d, len(triu))
         
-        #adj = np.eye(n) + np.random.choice([1,1], size=(n,n))
-        #adj[adj == 2] = 0
-        #np.random.shuffle(adj)
+        adj = np.zeros((n,n))
+        adj[np.triu_indices(n, 1)] = triu
+        self._trusses[0] = make_sym(adj)
+        self._trusses[1] = make_sym(np.random.uniform(area[0], area[1], size=(n,n)))*self._trusses[0]
         
-        adj = np.random.uniform(0, 1, size=(n,n))
-        adj[adj > 0.1] = 1
-        adj[adj != 1] = 0
-        rdn_adj[0] = adj
-        rdn_adj[1] = np.random.uniform(area[0], area[1], size=(n,n))
-
-        self._trusses[0] = make_sym(np.triu(rdn_adj[0]))
-        np.fill_diagonal(self._trusses[0], 0) # Delete recursive connections
-        self._trusses[1] = rdn_adj[1]*self._trusses[0]
-        
+        #print(self._trusses[0])
         self.set_innovations()
         
     def init_valid(self, max_try = 100, max_rep = 2, max_nodes = [0,10], area = [0,1]):
@@ -90,24 +91,9 @@ class Structure:
                 
 
     def check(self) -> bool:
-        # Check invalid structure -> DOF > 0
-        n = len(self._nodes)
-        node_edge_count = np.sum(self._trusses[0], axis=1)
-        #min_edge = 3 if self._n_constrain == n else np.min(node_edge_count[self._n_constrain:])
-        # Repair disjoint node
-        for r in np.argwhere(node_edge_count<2):
-            r = int(r)
-            if n-r >= 2 - node_edge_count[r]:
-                c = [n-1]
-            else:
-                c = sample(range(r, n), int(2 - node_edge_count[r]))
 
-            print(c, n, r)
-            self._trusses[0, int(r), c] = 1
-            self._trusses[0, c, int(r)] = 1
-            
-        #print(self._trusses[0])
-        if self.get_DOF()>0 and self._n_constrain != n:
+        # Statically indeterminate if 2n < m
+        if self.get_DOF()>0:
             return False
         else:
             return True

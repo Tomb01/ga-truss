@@ -49,7 +49,7 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
             child._trusses[1, p1_c, p1_r] = area
         else:
             if fit1 == fit2:
-                print("here")
+                print("")
     
     return child
 
@@ -58,4 +58,4 @@ def fit(k_tuple) -> float:
     if k_structure == 0:
         return 0
     else:
-        return k_structure * (k_mass + k_Fos)
+        return k_structure * 1/(k_mass + k_Fos)

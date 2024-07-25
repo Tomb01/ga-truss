@@ -36,7 +36,7 @@ def solve(nodes, trusses, elastic_modulus) -> np.array:
     # Calculation of trusses lenghts and inclinations
     dl = distance(nodes, trusses)
     l = lenght(dl)
-    K = np.divide(elastic_modulus*trusses[1], l, out=np.zeros_like(l), where=trusses[1]!=0)
+    K = np.divide(elastic_modulus*trusses[1], l, out=np.zeros_like(l), where=trusses[0]!=0)
     a = inclination(dl)
     
     # Trusses constants in x (cos) and y (sin) direction

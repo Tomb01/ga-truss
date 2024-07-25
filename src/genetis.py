@@ -51,9 +51,6 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
             child._trusses[0, p1_c, p1_r] = state
             child._trusses[1, p1_r, p1_c] = area
             child._trusses[1, p1_c, p1_r] = area
-        else:
-            if fit1 == fit2:
-                node_mutation(child)
     
     return child
     
@@ -82,6 +79,8 @@ def mutate(s, mutation_rate, k1, k2, k3, k4, max_rep = 2, area = [0.001, 1]) -> 
             return node_mutation(s, max_rep)
         elif mutation_type == 2:
             return area_mutation(s, area)
+        elif mutation_type == 3:
+            return connection_mutation(s)
     
     return s
     
@@ -99,14 +98,27 @@ def node_mutation(s: Structure, max_rep = 2) -> Structure:
 def area_mutation(s: Structure, area = [0.001, 1]) -> Structure:
     new_area = random.uniform(area[0], area[1])
     i,j = np.nonzero(s._trusses[0])
-    ix = random.randrange(0, len(i)-1)
+    if len(i) > 0:
+        ix = random.randrange(0, len(i)-1)
+        
+        r = i[ix]
+        c = j[ix]
+        
+        s._trusses[1, r, c] = new_area
+        s._trusses[1, c, r] = new_area
     
-    r = i[ix]
-    c = j[ix]
+    return s
     
-    s._trusses[1, r, c] = new_area
-    s._trusses[1, c, r] = new_area
-    
-    #print(s._trusses[1], r, c)
+def connection_mutation(s: Structure) -> Structure:
+    new_state = random.choice([0,1])
+    i,j = np.nonzero(s._trusses[0])
+    if len(i) > 0:
+        ix = random.randrange(0, len(i)-1)
+        
+        r = i[ix]
+        c = j[ix]
+        
+        s._trusses[0, r, c] = new_state
+        s._trusses[0, c, r] = new_state
     
     return s

@@ -9,26 +9,28 @@ from src.plot import show
 problem = [
     Node(0,0,True,True,0,0),
     Node(1,1,False,False,1000,0),
-    Node(1,0,True,True,0,0)
+    Node(1,0,True,True,0,0),
+    #Node(1,0,True,True,0,0)
 ]
+
 elastic_modulus = 72000
 yield_strenght = 261
-area = [100,1000]
+area = [0.001,100]
 
 # evolution parameter
 EPOCH = 100
 POPULATION = 100
-START_NODE_RANGE = [0,2]
+START_NODE_RANGE = [0,4]
 C1 = 1
 C3 = 1
 COMPATIBILITY_THRESHOLD = 100
 
 # Mutation
-NODE_MUTATION = 0.1
+NODE_MUTATION = 0.9
 AREA_MUTATION = 0.9
-NODE_INSERTION = 0
+CONNECTION_MUTATION = 0.9
 NODE_DELETE = 0
-MUTATION_RATE = 0.1
+MUTATION_RATE = 0.9
 
 # Init variables
 current_population = np.empty(POPULATION, dtype=np.object_)
@@ -36,12 +38,15 @@ new_population = np.empty(POPULATION, dtype=np.object_)
 fitness = np.zeros(POPULATION, dtype=float)
 compatibility = np.zeros_like(fitness)
 fitness_curve = np.zeros(EPOCH)
+figure, axis = plt.subplots(1,3)
 
 # Initial population -> random
 for i in range(0, POPULATION):
     s = Structure(problem, elastic_modulus)
     s.init_random(max_nodes=START_NODE_RANGE, area=area)
-    current_population[i] = s
+    new_population[i] = s
+    
+new_population[i].plot(axis)
     
 fx_computation = np.vectorize(Structure.compute)
 fx_compatibility = np.vectorize(get_compatibility)
@@ -54,6 +59,8 @@ spiece = np.zeros(POPULATION, dtype=int)
     
 # Evolution
 for e in range(0, EPOCH):
+    current_population = new_population 
+    
     # Calculate fitness value
     fitness = fx_computation(current_population, yield_strenght)
     compatibility = fx_compatibility(current_population, C1, C3)
@@ -119,37 +126,41 @@ for e in range(0, EPOCH):
                 p1 = parents[0]
                 p2 = parents[1]
                 new_population[s*niche_population+k] = crossover(spiece_population[p1], spiece_population[p2], len(problem), spiece_fitness[p1], spiece_fitness[p2])
+            #Mutate
+            new_population[s*niche_population:(s+1)*niche_population] = np.vectorize(mutate)(new_population[s*niche_population:(s+1)*niche_population], MUTATION_RATE, NODE_MUTATION, AREA_MUTATION, CONNECTION_MUTATION, NODE_DELETE)
         elif len(spiece_population) == 1:
             # Only clone
+            print(spieces_ids[s])
             clones = np.full(niche_population, spiece_population[0], dtype=object)
             #print(niche_population, (s+1)*niche_population-s*niche_population)
-            new_population[s*niche_population:(s+1)*niche_population] = np.vectorize(mutate)(clones, MUTATION_RATE, NODE_MUTATION, AREA_MUTATION, NODE_INSERTION, NODE_DELETE)
-            new_population[s*niche_population] = spiece_population[0]
+            #new_population[s*niche_population:(s+1)*niche_population] = np.vectorize(mutate)(clones, MUTATION_RATE, NODE_MUTATION, AREA_MUTATION, NODE_INSERTION, NODE_DELETE)
+            #Mutate
+            new_population[s*niche_population:(s+1)*niche_population] = np.vectorize(mutate)(clones, 0.01, NODE_MUTATION, AREA_MUTATION, CONNECTION_MUTATION, NODE_DELETE)
         else:
             #extint
             print("extint")
             pass
         
+        new_population[s*niche_population] = spiece_population[0]
     # Fill with random (to test)
     ###print(new_population)
     for r in range(POPULATION-new_random, POPULATION):
         s = Structure(problem, elastic_modulus)
         s.init_random(max_nodes=START_NODE_RANGE, area=area)
         new_population[r] = s
-        
-    # Mutate
-    new_population = np.vectorize(mutate)(new_population, MUTATION_RATE, NODE_MUTATION, AREA_MUTATION, NODE_INSERTION, NODE_DELETE)
          
-    print(np.max(fitness), len(spieces_ids))
+    print(np.max(fitness), len(spieces_ids), spiece[np.argmax(fitness)])
     fitness_curve[e] = np.max(fitness)
+    if fitness_curve[e] > fitness_curve[e-1]*10 and fitness_curve[e-1]!=0:
+        break
     if len(spieces_ids) <= 2:
-        COMPATIBILITY_THRESHOLD = COMPATIBILITY_THRESHOLD/2
-    current_population = new_population 
-    
-figure, axis = plt.subplots(1,2)
+       COMPATIBILITY_THRESHOLD = COMPATIBILITY_THRESHOLD/2
 
 amax = np.argmax(fitness)
-current_population[amax].plot(axis)
+
+best = current_population[amax]
+best.plot(axis, 0, 1)
+print(np.max(fitness), best.get_DOF())
 axis[-1].plot(range(0, EPOCH), fitness_curve)
 
 show()

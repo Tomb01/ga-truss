@@ -136,8 +136,9 @@ class Structure:
         mass = dl*l
         
         # K structure -> if structure is not valid Ks = 0
-        k_structure = int(self._valid)
-        Fos_mean = 0
+        k_structure = int(self._valid) * int(self.get_DOF()<=0)
+        k_Fos = 0
+        Fos_mean = 1
         #print(self._trusses[0])
         
         if self._valid:
@@ -152,17 +153,18 @@ class Structure:
             min_Fos = np.min(Fos)
             if min_Fos < 1:
                 # truss collapse
-                
+                k_Fos = 0
                 k_structure = 0
-        
-            Fos_mean = np.mean(Fos, dtype=np.float64) - Fos_target
+            else:
+                k_Fos = 1
+                Fos_mean = np.mean(Fos, dtype=np.float64) - Fos_target
         
         # Better mass when is minimal
         mass_sum = np.sum(mass) + len(self._nodes)*node_mass_k
         
         # K mass -> total mass
         # K Fos -> fos mean, if fos mean 
-        return k_structure * 1/(mass_sum) * 1/Fos_mean
+        return k_structure * 1/(mass_sum) * k_Fos*2**(1/Fos_mean)
     
     def compute(self, yield_stess =1, node_mass_k = 1, Fos_target = 2) -> float:
         self.solve()

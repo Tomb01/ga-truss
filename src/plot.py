@@ -25,7 +25,7 @@ def plot_structure(nodes: np.array, trusses: np.array, constrain: int, axis, row
                 s_y = nodes[i,1]
                 e_y = nodes[j,1]
                 plot.plot([s_x, e_x], [s_y, e_y], color=color)
-                #plt.text((s_x+e_x)/2, (s_y+e_y)/2, i, fontsize=8)
+                plot.text((s_x+e_x)/2, (s_y+e_y)/2, "{f:.3f}".format(f=trusses[5,i,j]), fontsize=8)
     
 def show():
     plt.grid()

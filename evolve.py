@@ -21,21 +21,21 @@ Fos_target = 2
 corner = [0,0,10,10]
 
 # evolution parameter
-EPOCH = 30
-POPULATION = 10
+EPOCH = 10000
+POPULATION = 100
 START_NODE_RANGE = [0,5]
 C1 = 1
 C3 = 1
-COMPATIBILITY_THRESHOLD = 50
-SPIECE_KILL_RATIO = 0.1
+COMPATIBILITY_THRESHOLD = 200
+SPIECE_KILL_RATIO = 0.8
 
 # Mutation
 MUTATION_NODE_POSITION = 0.1
-MUTATION_AREA = 0.9
-MUTATION_CONNECTION = 0.9
+MUTATION_AREA = 0.5
+MUTATION_CONNECTION = 0.5
 MUTATION_NODE_DELETE = 0.1
 MUTATION_NODE_INSERT = 0.1
-MUTATION_RATE = 0
+MUTATION_RATE = 0.1
 
 # Init variables
 current_population = np.empty(POPULATION, dtype=np.object_)
@@ -106,15 +106,16 @@ for e in range(0, EPOCH):
     offspring_start_index = 0
     
     #print(spiecies_compatibility)
-    print(fitness)
-    #print(adj_fitness, remaining_fitness)
+    #print(spiece, spieces_ids)
+    #print(fitness, remaining_fitness)
     # Selection -> filter by species
     for s in range(0, len(spieces_ids)):
         ind_index = np.where(spiece == spieces_ids[s])
-        #print(ind_index, spieces_ids[s])
         spiece_population = current_population[ind_index]
         spiece_fitness = adj_fitness[ind_index]
         spiece_fitness_total = np.sum(spiece_fitness)
+        
+        #print(len(spiece_population))
         
         if len(spiece_population) == 0 or remaining_fitness == 0:
             continue
@@ -134,10 +135,9 @@ for e in range(0, EPOCH):
 
         # Order by fitness
         fit_index = np.argsort(spiece_fitness)
-        fit_mean = np.mean(spiece_fitness, dtype=np.float64)
         spiece_fitness = spiece_fitness[-fit_index]
         spiece_population = spiece_population[-fit_index]
-        #print(spiece_fitness[0])
+        #print(spieces_ids[s], ind_index)
         
         survivor_index = int(SPIECE_KILL_RATIO*len(spiece_population))
         if survivor_index > 0:
@@ -158,6 +158,7 @@ for e in range(0, EPOCH):
         else:
             continue
         
+        new_population[offspring_start_index] = spiece_population[0]
         offspring_start_index = offspring_start_index + new_offsping_count
     
     #Check new population
@@ -166,24 +167,23 @@ for e in range(0, EPOCH):
         #raise Exception("Population off")
         
     #Mutate
-    new_population = np.vectorize(mutate)(new_population, MUTATION_RATE, MUTATION_NODE_POSITION, MUTATION_AREA, MUTATION_CONNECTION, MUTATION_NODE_DELETE, MUTATION_NODE_INSERT, corner[0], corner[2], corner[1], corner[3], area[0], area[1])
-
+    #new_population = np.vectorize(mutate)(new_population, MUTATION_RATE, MUTATION_NODE_POSITION, MUTATION_AREA, MUTATION_CONNECTION, MUTATION_NODE_DELETE, MUTATION_NODE_INSERT, corner[0], corner[2], corner[1], corner[3], area[0], area[1])
+    for i in range(0, POPULATION):
+        mutate(new_population[i], MUTATION_RATE, MUTATION_NODE_POSITION, MUTATION_AREA, MUTATION_CONNECTION, MUTATION_NODE_DELETE, MUTATION_NODE_INSERT, corner[0], corner[2], corner[1], corner[3], area[0], area[1])
+        
     print(e,"-----------", fitness_curve[e], len(spieces_ids), spiece[np.argmax(adj_fitness)])
     #print(fitness)
-    ex = input()
-    if ex == "y":
-        break
+    #ex = input()
+    #if ex == "y":
+    #    break
     if np.max(fitness)==0:
         break
 
 amax = np.argmax(fitness)
 
 best = current_population[amax]
-#for i in range(0, POPULATION):
-    #best.plot(axis, 0, i)
-
 best.plot(axis, 0, 0)
-print(amax, best.get_DOF(), best.compute(), fitness_curve[-1])
+print(amax, best.get_DOF(), best.compute(), fitness_curve[e])
 axis[-1].plot(range(0, EPOCH), fitness_curve)
 
 show()

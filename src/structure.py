@@ -86,7 +86,7 @@ class Structure:
             return True
         
     def get_DOF(self) -> int:
-        return 2*len(self._nodes) - self.get_edge_count() - self._reactions
+        return 2*len(self._nodes) - self.get_edge_count() # - self._reactions
     
     def get_edge_count(self) -> int:
         return np.sum(self._trusses[0])/2
@@ -168,14 +168,13 @@ class Structure:
                 # truss collapse
                 return FLOAT_MIN
             else:
-                k_Fos = 1
                 Fos_mean = np.mean(Fos, dtype=np.float64) - self._Fos_target
 
             # Better mass when is minimal
             mass_sum = np.sum(mass) + len(self._nodes)*self._node_mass_k
             # K mass -> total mass
             # K Fos -> fos mean, if fos mean 
-            return 2**1/(mass_sum) * k_Fos*(1/Fos_mean)
+            return 2**1/(mass_sum) + 2**(1/Fos_mean)
         
         return FLOAT_MIN
     

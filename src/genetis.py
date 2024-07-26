@@ -66,40 +66,36 @@ def is_shared(c1: float, c2: float, t: float) -> int:
     else:
         return 0
     
-def mutate(s: Structure, mutation_rate, k1, k2, k3, k4, k5, min_x, min_y, max_x, max_y, area_min, area_max) -> Structure:
+def mutate(s: Structure, k1, k2, k3, k4, k5, min_x, min_y, max_x, max_y, area_min, area_max) -> Structure:
     
     k = [k1, k2, k3, k4, k5]
     area = [area_min, area_max]
     mutation_type = np.random.choice([1, 2, 3, 4, 5], 1, k)[0]
-    mutate = np.random.choice([0,1], 1, [1-mutation_rate, mutation_rate])[0]
     
-    #print(mutate, mutation_type)
-    
-    if mutate:
-        if mutation_type == 1:
-            if s._n_constrain != len(s._nodes):
-                i = random.randrange(s._n_constrain, len(s._nodes))
-                new_x = random.uniform(min_x, max_x)
-                new_y = random.uniform(min_y, max_y)
-                
-                s._nodes[i,0] = new_x
-                s._nodes[i,1] = new_y
-            return s
-        
-        elif mutation_type == 2:
-            return area_mutation(s, area)
-        elif mutation_type == 3:
-            return connection_mutation(s)
-        elif mutation_type == 4:
+    if mutation_type == 1:
+        if s._n_constrain != len(s._nodes):
+            i = random.randrange(s._n_constrain, len(s._nodes))
             new_x = random.uniform(min_x, max_x)
             new_y = random.uniform(min_y, max_y)
-            s.add_node(new_x, new_y, area)
+              
+            s._nodes[i,0] = new_x
+            s._nodes[i,1] = new_y
+        return s
+        
+    elif mutation_type == 2:
+        return area_mutation(s, area)
+    elif mutation_type == 3:
+        return connection_mutation(s)
+    elif mutation_type == 4:
+        new_x = random.uniform(min_x, max_x)
+        new_y = random.uniform(min_y, max_y)
+        s.add_node(new_x, new_y, area)
+        return s
+    elif mutation_type == 5:
+        if s._n_constrain < len(s._nodes):
+            idx = random.choice(range(s._n_constrain, len(s._nodes)))
+            s.remove_node(idx)
             return s
-        elif mutation_type == 5:
-            if s._n_constrain < len(s._nodes):
-                idx = random.choice(range(s._n_constrain, len(s._nodes)))
-                s.remove_node(idx)
-                return s
     
     return s
 

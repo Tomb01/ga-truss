@@ -174,7 +174,7 @@ class Structure:
             mass_sum = np.sum(mass) + len(self._nodes)*self._node_mass_k
             # K mass -> total mass
             # K Fos -> fos mean, if fos mean 
-            return 2**1/(mass_sum) + 2**(1/Fos_mean)
+            return 1/(mass_sum) * 2**(1/Fos_mean)
         
         return FLOAT_MIN
     

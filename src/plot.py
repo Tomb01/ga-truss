@@ -13,7 +13,7 @@ def plot_structure(nodes: np.array, trusses: np.array, constrain: int, axis, row
         plot = axis[col]
         
     plot.grid()
-    print(trusses[1])
+    print(trusses[0])
     
     n = len(nodes)
     for i in range(0, n):

@@ -20,7 +20,7 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     n2 = innov2.shape[0]
     n = max(n1, n2)
     
-    child = Structure(parent1._nodes[0:constrain_n], parent1.elastic_modulus)
+    child = Structure(parent1._nodes[0:constrain_n], parent1.elastic_modulus, parent1._Fos_target, parent1._node_mass_k, parent1._yield_strenght)
     child.init(parent1._nodes[constrain_n:])
     child._trusses = np.copy(parent1._trusses)
     
@@ -55,7 +55,7 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     return child
     
 def get_compatibility(structure: Structure, C1=1, C3=1) -> float:
-    w_mean = np.mean(structure._trusses[1])
+    w_mean = np.mean(structure._trusses[1], dtype=np.float64)
     n = len(structure._nodes)
     e_count = n - structure._n_constrain
     return C1*e_count/n + C3*w_mean
@@ -79,6 +79,7 @@ def mutate(s, mutation_rate, k1, k2, k3, k4, max_rep = 2, area = [0.001, 1]) -> 
             return node_mutation(s, max_rep)
         elif mutation_type == 2:
             return area_mutation(s, area)
+            #return s
         elif mutation_type == 3:
             return connection_mutation(s)
     

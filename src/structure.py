@@ -26,11 +26,17 @@ class Structure:
     _trusses: np.array
     _valid: bool
     _innovations: np.array
+    _node_mass_k: float
+    _Fos_target: float
+    _yield_strenght: float
     
-    def __init__(self, contrain_nodes: np.array, elastic_modulus = 1):
+    def __init__(self, contrain_nodes: np.array, elastic_modulus, Fos_target, node_mass, yield_strenght):
         self._nodes = np.array(contrain_nodes)
         self._n_constrain = len(self._nodes)
         self.elastic_modulus = elastic_modulus
+        self._Fos_target = Fos_target
+        self._node_mass_k = node_mass
+        self._yield_strenght = yield_strenght
         self._reactions = np.sum(self._nodes[:,4:6])
         self._valid = False
         
@@ -66,9 +72,8 @@ class Structure:
         adj = np.zeros((n,n))
         adj[np.triu_indices(n, 1)] = triu
         self._trusses[0] = make_sym(adj)
-        self._trusses[1] = make_sym(np.random.uniform(area[0], area[1], size=(n,n)))*self._trusses[0]
-        
-        #print(self._trusses[0])
+        self._trusses[1] = np.multiply(make_sym(np.random.uniform(area[0], area[1], size=(n,n))),self._trusses[0])
+
         self.set_innovations()
         
     def init_valid(self, max_try = 100, max_rep = 2, max_nodes = [0,10], area = [0,1]):
@@ -130,7 +135,7 @@ class Structure:
     def get_innovations(self) -> np.array:
         return self._innovations
     
-    def calculate_fitness(self, yield_stess =1, node_mass_k = 1, Fos_target = 2) -> np.array:
+    def calculate_fitness(self) -> np.array:
         dl = distance(self._nodes, self._trusses)
         l = lenght(dl)
         mass = dl*l
@@ -144,7 +149,7 @@ class Structure:
         if self._valid:
             
             # better when Fos is like Fos_target, Fos_target - Fos is like zeros
-            Fos = np.abs(np.divide(yield_stess, self._trusses[3], out=np.zeros_like(self._trusses[3]), where=self._trusses[0]!=0)) 
+            Fos = np.abs(np.divide(self._yield_strenght, self._trusses[3], out=np.zeros_like(self._trusses[3]), where=self._trusses[0]!=0)) 
             self._trusses[5] = Fos
             Fos = Fos.ravel()
             conn = np.argwhere(self._trusses[0].ravel() == 1)
@@ -157,19 +162,19 @@ class Structure:
                 k_structure = 0
             else:
                 k_Fos = 1
-                Fos_mean = np.mean(Fos, dtype=np.float64) - Fos_target
+                Fos_mean = np.mean(Fos, dtype=np.float64) - self._Fos_target
         
         # Better mass when is minimal
-        mass_sum = np.sum(mass) + len(self._nodes)*node_mass_k
+        mass_sum = np.sum(mass) + len(self._nodes)*self._node_mass_k
         
         # K mass -> total mass
         # K Fos -> fos mean, if fos mean 
         return k_structure * 1/(mass_sum) * k_Fos*2**(1/Fos_mean)
     
-    def compute(self, yield_stess =1, node_mass_k = 1, Fos_target = 2) -> float:
+    def compute(self) -> float:
         self.solve()
         self.set_innovations()
-        return self.calculate_fitness(yield_stess, node_mass_k, Fos_target)
+        return self.calculate_fitness()
     
     def plot(self, axis, row = 0, col = 0, color = "blue"):
         plot_structure(self._nodes, self._trusses, self._n_constrain, axis, row, col, color)

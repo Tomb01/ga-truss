@@ -2,7 +2,7 @@ import numpy as np
 from typing import Tuple
 import random
 
-FLOAT_MAX = 1e40 #sys.float_info.max
+FLOAT_MAX = 1e100 #sys.float_info.max
 
 def connections(m: np.array, adj: np.array) -> np.array:    
     if len(adj.shape) > 2:

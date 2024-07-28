@@ -77,10 +77,12 @@ class Structure:
         
     def check(self) -> bool:
         # Statically indeterminate if 2n < m
-        if self.get_DOF()>0:
-            return False
-        else:
-            return True
+        edge_node = np.sum(self._trusses[0], axis=0)[0:self._n_constrain]
+        if np.all(edge_node >= 1):
+            if self.get_DOF()>0:
+                return False
+            else:
+                return True
         
     def get_DOF(self) -> int:
         #print(2*len(self._nodes), self.get_edge_count(), self._reactions)
@@ -176,7 +178,7 @@ class Structure:
                 # truss collapse
                 ret_fos = FLOAT_MAX
             else:
-                ret_fos = np.mean(Fos, dtype=np.float64)
+                ret_fos = np.mean(Fos, dtype=np.float64) / ret_mass
                 if ret_fos > FLOAT_MAX:
                     ret_fos = FLOAT_MAX
         

@@ -83,6 +83,7 @@ class Structure:
             return True
         
     def get_DOF(self) -> int:
+        #print(2*len(self._nodes), self.get_edge_count(), self._reactions)
         return 2*len(self._nodes) - self.get_edge_count() - self._reactions
     
     def get_edge_count(self) -> int:
@@ -153,9 +154,13 @@ class Structure:
         mass = np.multiply(l, self._trusses[1])
         n = len(self._nodes)
         # Better mass when is minimal
-        ret_mass = np.sum(mass) + len(self._nodes)*self._node_mass_k
+        truss_mass = np.sum(mass)
+        if truss_mass == 0:
+            ret_mass = FLOAT_MAX
+        else:
+            ret_mass = truss_mass + len(self._nodes)*self._node_mass_k
         
-        if self._valid and self.get_DOF() <= 0:
+        if self._valid:
             # better when Fos is like Fos_target, Fos_target - Fos is like zeros
             Fos = np.abs(np.divide(self._yield_strenght, self._trusses[3], out = np.zeros((n,n)), where=self._trusses[0]!=0))
             self._trusses[5] = Fos

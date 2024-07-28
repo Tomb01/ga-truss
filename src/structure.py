@@ -1,10 +1,7 @@
 import numpy as np  
-from random import randrange, uniform, sample
+from random import randrange, uniform
 from src.plot import plot_structure
-import sys
-from src.operations import solve, make_sym, distance, lenght
-
-FLOAT_MIN = sys.float_info.min
+from src.operations import solve, make_sym, distance, lenght, FLOAT_MAX
    
 def Node(x: float, y: float, vx: bool = False, vz: bool = False, Px: float = 0, Pz: float = 0):
     return np.array([x,y,0,0,int(vx),int(vz),0,0,Px,Pz,0], np.float64)
@@ -86,7 +83,7 @@ class Structure:
             return True
         
     def get_DOF(self) -> int:
-        return 2*len(self._nodes) - self.get_edge_count() # - self._reactions
+        return 2*len(self._nodes) - self.get_edge_count() - self._reactions
     
     def get_edge_count(self) -> int:
         return np.sum(self._trusses[0])/2
@@ -148,37 +145,39 @@ class Structure:
         return self._innovations
     
     def calculate_fitness(self) -> np.array:
+        ret_mass = 0
+        ret_fos = FLOAT_MAX
+        
         dl = distance(self._nodes, self._trusses)
         l = lenght(dl)
-        mass = dl*l
+        mass = np.multiply(l, self._trusses[1])
+        n = len(self._nodes)
+        # Better mass when is minimal
+        ret_mass = np.sum(mass) + len(self._nodes)*self._node_mass_k
         
         if self._valid and self.get_DOF() <= 0:
-            
             # better when Fos is like Fos_target, Fos_target - Fos is like zeros
-            Fos = np.abs(np.divide(self._yield_strenght, self._trusses[3], out=np.zeros_like(self._trusses[0]), where=self._trusses[0]!=0)) 
+            Fos = np.abs(np.divide(self._yield_strenght, self._trusses[3], out = np.zeros((n,n)), where=self._trusses[0]!=0))
             self._trusses[5] = Fos
             if np.isnan(Fos).any():
-                return FLOAT_MIN
+                ret_fos = FLOAT_MAX
+                
             Fos = Fos.ravel()
             conn = np.argwhere(self._trusses[0].ravel() == 1)
-            #print(conn)
-            Fos = Fos[conn]
+            Fos = np.subtract(Fos[conn], self._Fos_target)
+            
             min_Fos = np.min(Fos)
-            if min_Fos < self._Fos_target:
+            if min_Fos < 0:
                 # truss collapse
-                return FLOAT_MIN
+                ret_fos = FLOAT_MAX
             else:
-                Fos_mean = np.mean(Fos, dtype=np.float64) - self._Fos_target
-
-            # Better mass when is minimal
-            mass_sum = np.sum(mass) + len(self._nodes)*self._node_mass_k
-            # K mass -> total mass
-            # K Fos -> fos mean, if fos mean 
-            return 1/(mass_sum) * 2**(1/Fos_mean)
+                ret_fos = np.mean(Fos, dtype=np.float64)
+                if ret_fos > FLOAT_MAX:
+                    ret_fos = FLOAT_MAX
         
-        return FLOAT_MIN
+        return np.array([ret_mass, ret_fos])
     
-    def compute(self) -> float:
+    def compute(self) -> np.array:
         self.solve()
         self.set_innovations()
         return self.calculate_fitness()

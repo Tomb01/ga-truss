@@ -1,9 +1,10 @@
-from src.structure import Structure, Node
+from src.structure import Structure, Node, FLOAT_MAX
 from src.genetis import get_compatibility, is_shared, crossover, mutate
 import numpy as np
 import random
 import matplotlib.pyplot as plt
 from src.plot import show
+from src.operations import vector_distance, binary_turnament
 
 # Problem parameter
 problem = [
@@ -15,18 +16,18 @@ problem = [
 
 elastic_modulus = 72000
 yield_strenght = 261
-area = [0.0000001,100]
+area = [0.000001,100]
 node_mass = 1
 Fos_target = 2
 corner = [0,0,10,10]
 
 # evolution parameter
-EPOCH = 100
-POPULATION = 1000
-START_NODE_RANGE = [0,10]
-ELITE_RATIO = 0.05
-KILL_RATIO = 0.8
-MUTANT_RATIO = 0.5
+EPOCH = 10
+POPULATION = 100
+START_NODE_RANGE = [0,3]
+ELITE_RATIO = 0.1
+KILL_RATIO = 0.5
+MUTANT_RATIO = 0.1
 
 # Mutation
 MUTATION_NODE_POSITION = 0.9
@@ -38,7 +39,13 @@ MUTATION_NODE_INSERT = 0.1
 # Init variables
 current_population = np.empty(POPULATION, dtype=np.object_)
 new_population = np.empty(POPULATION, dtype=np.object_)
-fitness = np.zeros(POPULATION, dtype=float)
+sorted_population = np.empty(POPULATION, dtype=np.object_)
+fos_fitness = np.zeros((POPULATION), dtype=float)
+mass_fitness = np.zeros((POPULATION), dtype=float)
+norm_fos_fitness = np.zeros((POPULATION), dtype=float)
+norm_mass_fitness = np.zeros((POPULATION), dtype=float)
+rank = np.zeros(POPULATION)
+
 fitness_curve = np.zeros(EPOCH)
 figure, axis = plt.subplots(1,2)
 
@@ -53,60 +60,100 @@ for i in range(0, POPULATION):
     s.init_random(max_nodes=START_NODE_RANGE, area=area)
     new_population[i] = s
     
-fx_computation = np.vectorize(Structure.compute)
-    
 # Evolution
 for e in range(0, EPOCH):
     current_population = new_population 
     new_population = np.empty(POPULATION, dtype=np.object_)
     
-    # Calculate fitness value
-    fitness = fx_computation(current_population)
-    fitness_max = np.max(fitness)
-    fitness_curve[e] = fitness_max
-    fitness = np.divide(fitness, fitness_max)
-    
-    if np.max(fitness)<=1e-4:
-        print(fitness)
-        break
-    
-    # Sort
-    sorted_idx = np.argsort(-fitness)
-    current_population = current_population[sorted_idx]
-    #print(current_population[0].compute())
-    fitness = fitness[sorted_idx]
-    
-    # Elite -> pass without modifications
-    new_population[0:elite_count] = current_population[0:elite_count]
-    
-    to_edit_range = range(elite_count, round(POPULATION*KILL_RATIO))
-    # Crossover
-    crossover_range = range(elite_count, elite_count+crossover_count)
-    for k in crossover_range:
-        parents = random.sample(to_edit_range, 2)
-        p1 = parents[0]
-        p2 = parents[1]
-        new_population[k] = crossover(current_population[p1], current_population[p2], len(problem), fitness[p1], fitness[p2])
+    # Calculate fitness
+    for i in range(0, POPULATION):
+        fitness_i = current_population[i].compute()
+        mass_fitness[i] = fitness_i[0]
+        fos_fitness[i] = fitness_i[1]    
         
-    # Mutant
-    for m in range(elite_count+crossover_count, POPULATION):
-        i = random.choice(to_edit_range)
-        new_population[m] = mutate(current_population[i], MUTATION_NODE_POSITION, MUTATION_AREA, MUTATION_CONNECTION, MUTATION_NODE_INSERT, MUTATION_NODE_DELETE, corner[0], corner[1], corner[2], corner[3], area[0], area[1])
+    # Normalize fitness
+    mass_fitness_sum = np.sum(mass_fitness)
+    fos_fitness_sum = np.sum(fos_fitness)
+    norm_fos_fitness = fos_fitness/fos_fitness_sum
+    norm_mass_fitness = mass_fitness/mass_fitness_sum
+    # Normalize for multi-objective optimization
+    norm_fos_fitness = norm_fos_fitness/np.min(norm_fos_fitness)
+    norm_mass_fitness = norm_mass_fitness/np.min(norm_mass_fitness)
     
-    #Check new population
-    if np.all(new_population == None):
-        raise Exception("Population off")
+    #print(norm_fos_fitness, norm_mass_fitness)
+    
+    # Pareto ranking
+    unassigned_rank = np.arange(POPULATION)
+    rank_count = 1
+    while len(unassigned_rank) > 0:
+        all_dominated = True
+        dominated = np.empty_like(unassigned_rank, dtype=bool)
+        for i in range(0, len(unassigned_rank)):
+            rank_idx_fos = norm_fos_fitness[i] > norm_fos_fitness
+            rank_idx_mass = norm_mass_fitness[i] > norm_mass_fitness
+            dominated[i] = np.any(rank_idx_fos*rank_idx_mass)
         
-    print(e,"-----------", fitness_curve[e])
-    #print(fitness)
-    #ex = input()
-    #if ex == "y":
-    #    break
+        if np.all(dominated == True) or len(unassigned_rank) == 1:
+            rank[rank == 0] = rank_count
+            break
+        else:
+            dominant_idx = unassigned_rank[np.invert(dominated)]
+            rank[dominant_idx] = rank_count
+            unassigned_rank = unassigned_rank[dominated]
+            rank_count = rank_count + 1
+            
+    # Crowding and sort population
+    rank_sorting_offset = 0
+    for r in reversed(range(1, rank_count+1)):
+        rank_idx = rank == r
+        rank_population = current_population[rank_idx]
+        fos_fitness_rank = norm_fos_fitness[rank_idx]
+        mass_fitness_rank = norm_mass_fitness[rank_idx]
+        rank_population_count = len(rank_population)
+        
+        # Sort in fos direction 
+        sorted_fos_idx = np.argsort(fos_fitness_rank)
+        fos_fitness_rank = fos_fitness_rank[sorted_fos_idx]
+        crowding_distance = np.zeros_like(fos_fitness_rank)
+        
+        # Calculate distance in mass direction
+        for j in range(0, len(rank_population)):
+            if j == 0 or j == len(rank_population)-1:
+                crowding_distance[j] = FLOAT_MAX
+            else:
+                distance_left = vector_distance(mass_fitness_rank[j-1], mass_fitness_rank[j], fos_fitness_rank[j-1], fos_fitness_rank[j])
+                distance_right =  vector_distance(mass_fitness_rank[j+1], mass_fitness_rank[j], fos_fitness_rank[j+1], fos_fitness_rank[j])
+                #print(distance_left, distance_right)
+                crowding_distance[j] = distance_left + distance_right
+                
+        sorted_distance_idx = np.argsort(-crowding_distance)
+        rank_population = rank_population[sorted_fos_idx]
+        sorted_population[rank_sorting_offset:rank_sorting_offset+rank_population_count] = rank_population
+        rank_sorting_offset = rank_sorting_offset + rank_population_count
+        
+    # Selection
+    idx = np.arange(POPULATION)
+    for i in range(0, POPULATION):
+        p1 = binary_turnament(idx)
+        p2 = binary_turnament(idx)
+        c = crossover(sorted_population[p1], sorted_population[p2], len(problem), p1, p2)
+        c = mutate(c, MUTATION_NODE_POSITION, MUTATION_AREA, MUTATION_CONNECTION, MUTATION_NODE_INSERT, MUTATION_NODE_DELETE, corner, area)
+        new_population[i] = c
+        
+    print(e, "---", sorted_population[0].compute())
+        
+    # Check new population
+    #if np.all(new_population == None):
+    #    raise Exception("Population off")
 
 best = current_population[0]
 best.plot(axis, 0, 0)
 print(best.get_DOF(), best.compute(), fitness_curve[e])
-axis[-1].plot(range(0, EPOCH), fitness_curve)
+
+# Print fitness
+axis[-1].scatter(norm_fos_fitness, norm_mass_fitness)
+for j in range(0, len(norm_fos_fitness)):
+    axis[-1].annotate(str(rank[j]), (norm_fos_fitness[j], norm_mass_fitness[j]))
 
 show()
         

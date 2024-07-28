@@ -66,10 +66,13 @@ def is_shared(c1: float, c2: float, t: float) -> int:
     else:
         return 0
     
-def mutate(s: Structure, k1, k2, k3, k4, k5, min_x, min_y, max_x, max_y, area_min, area_max) -> Structure:
+def mutate(s: Structure, node_pos_k, area_k, connection_k, add_node_k, delete_node_k, corner, area) -> Structure:
     
-    k = [k1, k2, k3, k4, k5]
-    area = [area_min, area_max]
+    min_x = corner[0]
+    min_y = corner[1]
+    max_x = corner[2]
+    max_y = corner[3]
+    k = [node_pos_k, area_k, connection_k, add_node_k, delete_node_k]
     mutation_type = np.random.choice([1, 2, 3, 4, 5], 1, k)[0]
     
     if mutation_type == 1:

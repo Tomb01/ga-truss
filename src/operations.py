@@ -1,5 +1,8 @@
 import numpy as np
 from typing import Tuple
+import random
+
+FLOAT_MAX = 1e40 #sys.float_info.max
 
 def connections(m: np.array, adj: np.array) -> np.array:    
     if len(adj.shape) > 2:
@@ -122,3 +125,14 @@ def upper_tri_masking(A):
     r = np.arange(m)
     mask = r[:,None] < r
     return A[mask]
+
+def vector_distance(y2, y1, x2, x1) -> float:
+    return ((y2-y1)**2+(x2-x1)**2)**(1/2)
+
+def binary_turnament(fitness: np.array) -> int:
+    idx = range(0, len(fitness))
+    p1, p2 = random.sample(idx, 2)
+    if fitness[p1] > fitness[p2]:
+        return p1
+    else:
+        return p2

@@ -17,6 +17,8 @@ def decode_innovations(innovation: str):
     comp = innovation.split("-")
     return [float(comp[0]), float(comp[1]), float(comp[2]), float(comp[3]), float(comp[4])]
 
+TRUSS_DIMENSION = 7
+
 class Structure:
     
     _reactions: int
@@ -30,7 +32,7 @@ class Structure:
     _Fos_target: float
     _yield_strenght: float
     
-    def __init__(self, contrain_nodes: np.array, elastic_modulus, Fos_target, node_mass, yield_strenght, corner):
+    def __init__(self, contrain_nodes: np.array, elastic_modulus, Fos_target, node_mass, yield_strenght, density, corner):
         self._nodes = np.array(contrain_nodes)
         self._n_constrain = len(self._nodes)
         self.elastic_modulus = elastic_modulus
@@ -40,18 +42,19 @@ class Structure:
         self._reactions = np.sum(self._nodes[:,4:6])
         self._valid = False
         self._corner = corner
+        self.density = density
         
     def init(self, nodes: np.array):
         self._nodes = np.vstack((self._nodes, nodes))
         n = len(self._nodes)
-        self._trusses = np.zeros((6, n, n))
+        self._trusses = np.zeros((TRUSS_DIMENSION, n, n))
     
     def init_random(self, max_nodes, area):
         
         n = randrange(max_nodes[0], max_nodes[1]) + self._n_constrain
         self._nodes.resize((n, self._nodes.shape[1]))
         
-        self._trusses = np.zeros((6,n,n))
+        self._trusses = np.zeros((TRUSS_DIMENSION,n,n))
         for i in range(self._n_constrain,n):
             x = uniform(self._corner[0], self._corner[2])
             y = uniform(self._corner[1], self._corner[3])
@@ -94,7 +97,7 @@ class Structure:
     def add_node(self, x, y, area=[0.001,1]):
         self._nodes = np.append(self._nodes, [Node(x, y)], axis=0)
         n = len(self._nodes)
-        new_adj = np.zeros((6,n,n))
+        new_adj = np.zeros((TRUSS_DIMENSION,n,n))
         new_adj[0, :(n-1), :(n-1)] = self._trusses[0]
         new_adj[1, :(n-1), :(n-1)] = self._trusses[1]
         
@@ -147,43 +150,32 @@ class Structure:
     def get_innovations(self) -> np.array:
         return self._innovations
     
-    def calculate_fitness(self) -> np.array:
-        ret_mass = 0
-        ret_fos = FLOAT_MAX
+    def calculate_fitness(self) -> float:
         
-        dl = distance(self._nodes, self._trusses)
-        l = lenght(dl)
-        mass = np.multiply(l, self._trusses[1])
+        if not self._valid:
+            # invalid
+            return FLOAT_MAX
+        
+        #print(np.min(-np.abs(self._trusses[3])))
+        if np.min(-np.abs(self._trusses[3])) < -self._yield_strenght * self._Fos_target:
+            # collapse
+            return FLOAT_MAX
+        
+        # Compute structural efficency matrix
         n = len(self._nodes)
-        # Better mass when is minimal
-        truss_mass = np.sum(mass)
-        if truss_mass == 0:
-            ret_mass = FLOAT_MAX
+        l = self._trusses[6]
+        mass = np.multiply(l, self._trusses[1])
+        mass = mass * self.density
+        max_load = self._trusses[2]*self._Fos_target
+        e = np.abs(np.divide(max_load, mass, out = np.zeros((n,n)), where=self._trusses[2]!=0))
+        self._trusses[5] = e
+        #print(e)
+
+        if np.any(e[self._trusses[0]==1] == 0):
+            return FLOAT_MAX
         else:
-            ret_mass = truss_mass + len(self._nodes)*self._node_mass_k
+            return np.sum(mass)**2/np.sum(np.abs(max_load))
         
-        if self._valid:
-            # better when Fos is like Fos_target, Fos_target - Fos is like zeros
-            Fos = np.abs(np.divide(self._yield_strenght, self._trusses[3], out = np.zeros((n,n)), where=self._trusses[0]!=0))
-            self._trusses[5] = Fos
-            if np.isnan(Fos).any():
-                ret_fos = FLOAT_MAX
-                
-            Fos = Fos.ravel()
-            conn = np.argwhere(self._trusses[0].ravel() == 1)
-            Fos = np.subtract(Fos[conn], self._Fos_target)
-            
-            min_Fos = np.min(Fos)
-            if min_Fos < 0:
-                # truss collapse
-                ret_fos = FLOAT_MAX
-            else:
-                ret_fos = np.mean(Fos, dtype=np.float64) / ret_mass
-                if ret_fos > FLOAT_MAX:
-                    ret_fos = FLOAT_MAX
-        
-        return np.array([ret_mass, ret_fos])
-    
     def compute(self) -> np.array:
         self.solve()
         self.set_innovations()

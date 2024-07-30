@@ -41,6 +41,7 @@ def solve(nodes, trusses, elastic_modulus) -> np.array:
     l = lenght(dl)
     K = np.divide(elastic_modulus*trusses[1], l, out=np.zeros_like(l), where=trusses[0]!=0)
     a = inclination(dl)
+    trusses[6] = l
     
     # Trusses constants in x (cos) and y (sin) direction
     n = len(nodes)

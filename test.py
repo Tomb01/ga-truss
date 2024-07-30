@@ -1,7 +1,7 @@
 from src.structure import Structure, Node
 import matplotlib.pyplot as plt
 from src.plot import show
-from src.genetis import crossover, area_mutation, get_compatibility
+from src.genetis import crossover, area_mutation, get_distance
 
 problem = [
     Node(0,0,True,True,0,0),

@@ -18,9 +18,8 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     
     n1 = innov1.shape[0]
     n2 = innov2.shape[0]
-    n = max(n1, n2)
     
-    child = Structure(parent1._nodes[0:constrain_n], parent1.elastic_modulus, parent1._Fos_target, parent1._node_mass_k, parent1._yield_strenght, parent1._corner)
+    child = Structure(parent1._nodes[0:constrain_n], parent1.elastic_modulus, parent1._Fos_target, parent1._node_mass_k, parent1._yield_strenght, parent1.density, parent1._corner)
     child.init(parent1._nodes[constrain_n:])
     child._trusses = np.copy(parent1._trusses)
     
@@ -54,17 +53,23 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     
     return child
     
-def get_compatibility(structure: Structure, C1=1, C3=1) -> float:
-    w_mean = np.mean(structure._trusses[1], dtype=np.float64)
-    n = len(structure._nodes)
-    e_count = n - structure._n_constrain
-    return C1*e_count/n + C3*w_mean
+def get_distance(s1: Structure, s2: Structure, K_mass = 1, K_cm = 1, K_nodes = 1) -> float:
+    mass_1 = np.sum(s1._trusses[6]*s1.density)
+    mass_2 = np.sum(s2._trusses[6]*s2.density)
+    
+    #print(mass_2-mass_1)
+    return abs(K_mass*(mass_2-mass_1) + K_nodes*(len(s2._nodes) - len(s2._nodes)))
 
-def is_shared(c1: float, c2: float, t: float) -> int:
-    if c1-t <= c2 <= c1+t:
-        return 1
-    else:
-        return 0
+def sharing(population, index: int, threshold: float) -> int:
+    s = population[index]
+    sharing = 0
+    for i in range(0, len(population)):
+        if index != i:
+            distance = get_distance(s, population[i])
+            if distance < threshold:
+                sharing = sharing + (1 - distance/threshold)
+
+    return sharing
     
 def mutate(s: Structure, node_pos_k, area_k, connection_k, add_node_k, delete_node_k, corner, area) -> Structure:
     

@@ -1,8 +1,6 @@
 import numpy as np  
 from random import randrange, uniform
-from src.plot import plot_structure
-from src.operations import solve, make_sym, distance, lenght, FLOAT_MAX
-from typing import List
+from src.operations import solve, make_sym, FLOAT_MAX
    
 def Node(x: float, y: float, vx: bool = False, vz: bool = False, Px: float = 0, Pz: float = 0):
     return np.array([x,y,0,0,int(vx),int(vz),0,0,Px,Pz,0], np.float64)
@@ -219,7 +217,5 @@ class Structure:
         self.solve()
         self.set_innovations()
         return self.calculate_fitness()
-    
-    def plot(self, axis, row = 0, col = 0, color = "blue"):
-        plot_structure(self._nodes, self._trusses, self._n_constrain, axis, row, col, color)
+
         

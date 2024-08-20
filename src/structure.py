@@ -6,8 +6,17 @@ from src.operations import solve, make_sym, distance, lenght, FLOAT_MAX
 def Node(x: float, y: float, vx: bool = False, vz: bool = False, Px: float = 0, Pz: float = 0):
     return np.array([x,y,0,0,int(vx),int(vz),0,0,Px,Pz,0], np.float64)
 
-def encode_innovation(x1, x2, y1, y2) -> int:
-    return "{x1:.6f}-{y1:.6f}-{x2:.6f}-{y2:.6f}".format(x1=x1, x2=x2, y1=y1, y2=y2)
+def encode_innovation(x1, x2, y1, y2, crossover_radius, round_digit) -> int:
+    return "{x1_max:.6f}-{x1_min:.6f}-{y1_max:.6f}-{y1_min:.6f}-{x2_max:.6f}-{x2_min:.6f}-{y2_max:.6f}-{y2_min:.6f}".format(
+        x1_max = round(x1+crossover_radius, round_digit),
+        x1_min = round(x1-crossover_radius, round_digit),
+        x2_max = round(x2+crossover_radius, round_digit),
+        x2_min = round(x2-crossover_radius, round_digit),
+        y1_max = round(y1+crossover_radius, round_digit),
+        y1_min = round(y1-crossover_radius, round_digit),
+        y2_max = round(y2+crossover_radius, round_digit),
+        y2_min = round(y2-crossover_radius, round_digit)
+    )
     #bytestring = str.encode('utf-8')
     #return int.from_bytes(bytestring, 'big')
 
@@ -31,8 +40,10 @@ class Structure:
     _node_mass_k: float
     _Fos_target: float
     _yield_strenght: float
+    _crossover_radius: float    
+    _round_digit: int
     
-    def __init__(self, contrain_nodes: np.array, elastic_modulus, Fos_target, node_mass, yield_strenght, density, corner):
+    def __init__(self, contrain_nodes: np.array, elastic_modulus, Fos_target, node_mass, yield_strenght, density, corner, crossover_radius, round_digit):
         self._nodes = np.array(contrain_nodes)
         self._n_constrain = len(self._nodes)
         self.elastic_modulus = elastic_modulus
@@ -43,6 +54,8 @@ class Structure:
         self._valid = False
         self._corner = corner
         self.density = density
+        self._crossover_radius = crossover_radius
+        self._round_digit = round_digit
         
     def init(self, nodes: np.array):
         self._nodes = np.vstack((self._nodes, nodes))
@@ -74,7 +87,8 @@ class Structure:
         adj = np.zeros((n,n))
         adj[np.triu_indices(n, 1)] = triu
         self._trusses[0] = make_sym(adj)
-        self._trusses[1] = np.multiply(make_sym(np.triu(np.random.uniform(area[0], area[1], size=(n,n)))),self._trusses[0])
+        area_matrix = np.round(np.random.uniform(area[0], area[1], size=(n,n)), self._round_digit)
+        self._trusses[1] = np.multiply(make_sym(np.triu(area_matrix)),self._trusses[0])
 
         self.set_innovations()
         
@@ -102,7 +116,7 @@ class Structure:
         new_adj[1, :(n-1), :(n-1)] = self._trusses[1]
         
         conn = np.concatenate([np.ones(2), np.zeros(int(n-2-1))])
-        areas = np.random.uniform(area[0], area[1], size=n-1)
+        areas = np.round(np.random.uniform(area[0], area[1], size=n-1), self._round_digit)
         np.random.shuffle(conn)
         areas = np.multiply(areas, conn)
         
@@ -142,7 +156,7 @@ class Structure:
             #self._nodes[i,10] = encode_innovation(self._nodes[i,0], 0, self._nodes[i,1], 0)
             for j in range(0,n):
                 if i!=j:
-                    self._innovations[i,j] = encode_innovation(self._nodes[i,0], self._nodes[j,0], self._nodes[i,1], self._nodes[j,1])
+                    self._innovations[i,j] = encode_innovation(self._nodes[i,0], self._nodes[j,0], self._nodes[i,1], self._nodes[j,1], self._crossover_radius, self._round_digit)
                     self._innovations[j,i] = self._innovations[i,j]
 
         #self._i[5] = make_sym(self._trusses[5])

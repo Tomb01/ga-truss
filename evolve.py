@@ -21,6 +21,7 @@ node_mass = 1
 Fos_target = 1
 density = 0.00000271
 corner = [0,0,25,5]
+round_digit = 2
 
 # evolution parameter
 EPOCH = 10
@@ -30,6 +31,7 @@ ELITE_RATIO = 0.1
 KILL_RATIO = 0.5
 MUTANT_RATIO = 0.1
 NICHE_RADIUS = 0.1
+CROSSOVER_RADIUS = 5
 
 # Mutation
 MUTATION_NODE_POSITION = 0.9
@@ -57,7 +59,7 @@ crossover_count = POPULATION-mutant_count-elite_count
 
 # Initial population -> random
 for i in range(0, POPULATION):
-    s = Structure(problem, elastic_modulus, Fos_target, node_mass, yield_strenght, density=density, corner=corner)
+    s = Structure(problem, elastic_modulus, Fos_target, node_mass, yield_strenght, density=density, corner=corner, crossover_radius=CROSSOVER_RADIUS, round_digit=round_digit)
     s.init_random(max_nodes=START_NODE_RANGE, area=area)
     new_population[i] = s
     

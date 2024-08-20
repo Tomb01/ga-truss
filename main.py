@@ -1,8 +1,8 @@
 from src.structure import Node, Structure
 import numpy as np
-from src.evolution import epoch
 from src.plot import show
 import matplotlib.pyplot as plt
+from src.database import Database
 
 np.set_printoptions(precision=8, suppress=True)
 
@@ -12,15 +12,17 @@ problem = [
     Node(1,0,True,True,0,0)
 ]
 
-max_epoch = 10
-plot_interval = int(max_epoch/4)
-figure, axis = plt.subplots(1,max_epoch//plot_interval+1)
-#s.plot(axis)
-best, fitness_values = epoch(problem, n_population=100, max_epoch=max_epoch, to_keep=0.1, area=[100,1000], elastic_modulus=69000, yield_stress=280, max_node=[1,20])
-for i in range(0, len(best)):
-    if i%plot_interval==0:
-        best[i//plot_interval].plot(axis, 0, i//plot_interval+1)
+s = Structure(problem, 1, 1, 1, 1, 1, [0, 0, 3, 3], 2, 2)
+s.init_random([0,1], [0.1,10])
+f = s.compute()
 
-axis[0].plot(np.linspace(0, max_epoch, num=max_epoch), fitness_values)
+db = Database("test.db")
+db.append_generation(1, f)
+db.save_structure(1, s)
+
+s1 = db.read_structure(1, 0)
+
+figure, axis = plt.subplots(1,2)
+s.plot(axis)
 
 show()

@@ -1,11 +1,9 @@
 from src.structure import Structure, Node, FLOAT_MAX
-from src.genetis import get_distance, sharing, crossover, mutate
+from src.genetis import sharing, crossover, mutate
 import numpy as np
-import random
 import matplotlib.pyplot as plt
 from src.plot import show
-from src.operations import vector_distance, binary_turnament
-from src.raking import paretoRanking
+from src.operations import binary_turnament
 
 # Problem parameter
 problem = [

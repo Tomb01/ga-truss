@@ -1,25 +1,28 @@
-from src.structure import Structure, Node, FLOAT_MAX
+from src.structure import Structure, Node, StructureParameters, MATERIAL_ALLUMINIUM, SpaceArea
 from src.genetis import sharing, crossover, mutate
 import numpy as np
 import matplotlib.pyplot as plt
-from src.plot import show
+from src.plot import plot_structure, show
 from src.operations import binary_turnament
+from src.database import Database
+import datetime
 
 # Problem parameter
 problem = [
     Node(0,0,True,True,0,0),
-    Node(25,1,False,False,0,1e4),
-    #Node(0,1,False,False,0,0)
+    Node(1,1,False,False,0,1e6),
+    Node(2,0,True,True,0,0)
 ]
 
-elastic_modulus = 72000
-yield_strenght = 240
-area = [0.000001,1000]
-node_mass = 1
-Fos_target = 1
-density = 0.00000271
-corner = [0,0,25,5]
-round_digit = 2
+param = StructureParameters()
+param.corner = SpaceArea(0,0,2,4)
+param.crossover_radius = 0.2
+param.safety_factor_yield = 1
+param.material = MATERIAL_ALLUMINIUM
+param.node_mass_k = 1
+param.round_digit = 2
+
+area_range = [1,10]
 
 # evolution parameter
 EPOCH = 10
@@ -44,6 +47,7 @@ new_population = np.empty(POPULATION, dtype=np.object_)
 sorted_population = np.empty(POPULATION, dtype=np.object_)
 fitness = np.zeros((POPULATION), dtype=float)
 adj_fitness = np.zeros((POPULATION), dtype=float)
+db = Database(".trash/"+datetime.date.today().strftime('%Y%m%d%H%M%S') +".db")
 
 fitness_curve = np.zeros(EPOCH)
 figure, axis = plt.subplots(1,5)
@@ -57,32 +61,34 @@ crossover_count = POPULATION-mutant_count-elite_count
 
 # Initial population -> random
 for i in range(0, POPULATION):
-    s = Structure(problem, elastic_modulus, Fos_target, node_mass, yield_strenght, density=density, corner=corner, crossover_radius=CROSSOVER_RADIUS, round_digit=round_digit)
-    s.init_random(nodes_range=START_NODE_RANGE, area_range=area)
+    s = Structure(problem, param)
+    s.init_random(nodes_range=START_NODE_RANGE, area_range=area_range)
     new_population[i] = s
     
 # Evolution
 for e in range(0, EPOCH):
     current_population = new_population 
     new_population = np.empty(POPULATION, dtype=np.object_)
+    db.append_generation(POPULATION,0)
     
     # Calculate fitness and adj fitness
     for i in range(0, POPULATION):
         fitness[i] = current_population[i].compute()    
-        niche_count = sharing(current_population, i, NICHE_RADIUS)
-        adj_fitness[i] = fitness[i]/niche_count
+        db.save_structure(e+1, current_population[i])
+        #niche_count = sharing(current_population, i, NICHE_RADIUS)
+        #adj_fitness[i] = fitness[i]/niche_count
         #print(fitness[i], adj_fitness[i])
             
     # Crossover
     i = 0
     idx = np.arange(POPULATION)
-    sorted_idx = np.argsort(adj_fitness)
+    sorted_idx = np.argsort(fitness)
     #print(sorted_idx)
     sorted_population = current_population[sorted_idx]
     fitness = fitness[sorted_idx]
     adj_fitness = adj_fitness[sorted_idx]
     
-    while i < POPULATION and len(idx) > 2:
+    while i < POPULATION-elite_count and len(idx) > 2:
         idx_p1 = binary_turnament(idx)
         idx_p2 = binary_turnament(idx)
         p1 = idx[idx_p1]
@@ -91,7 +97,8 @@ for e in range(0, EPOCH):
             parent1 = sorted_population[p1]
             parent2 = sorted_population[p2]
             c = crossover(parent1, parent2, len(problem), fitness[p1], fitness[p2])
-            c = mutate(c, MUTATION_NODE_POSITION, MUTATION_AREA, MUTATION_CONNECTION, MUTATION_NODE_INSERT, MUTATION_NODE_DELETE, corner, area)
+            if np.random.choice([0,1], 1, [1-MUTANT_RATIO, MUTANT_RATIO])[0] == 1:
+                c = mutate(c, MUTATION_NODE_POSITION, MUTATION_AREA, MUTATION_CONNECTION, MUTATION_NODE_INSERT, MUTATION_NODE_DELETE, area_range)
             child_fitness = c.compute()
             family_fitness = np.array([fitness[p1], fitness[p2], child_fitness])
             family = np.array([parent1, parent2, c])
@@ -101,8 +108,8 @@ for e in range(0, EPOCH):
             i = i+2
             idx = np.delete(idx, [idx_p1, idx_p2])
             
-    new_population[-2] = sorted_population[0]
-    new_population[-1] = sorted_population[1]
+    #new_population[-2] = sorted_population[0]
+    new_population[-elite_count:] = sorted_population[:elite_count]
     
     fitness_curve[e] = fitness[0]
     if e > 0:
@@ -113,7 +120,7 @@ for e in range(0, EPOCH):
 
 best[-1] = sorted_population[0]
 for j in range(0, len(best)):
-    best[j].plot(axis, 0, j) 
+    plot_structure(best[j], figure, axis[j])
 print(best[-1].get_DOF(), best[-1].compute(), fitness_curve[e])
 axis[-1].plot(range(0, EPOCH), fitness_curve)
 show()

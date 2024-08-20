@@ -1,7 +1,5 @@
-from src.structure import Structure, Node
-import matplotlib.pyplot as plt
-from src.plot import show
-from src.genetis import crossover, area_mutation, get_distance
+from src.structure import Structure, Node, StructureParameters, MATERIAL_ALLUMINIUM, SpaceArea
+from src.plot import show, plot_structure
 
 problem = [
     Node(0,0,True,True,0,0),
@@ -10,13 +8,17 @@ problem = [
     Node(1,0,True,True,0,0)
 ]
 
-figure, axis = plt.subplots(1,3)
+param = StructureParameters()
+param.corner = SpaceArea(0,0,2,2)
+param.crossover_radius = 1
+param.safety_factor_yield = 1
+param.material = MATERIAL_ALLUMINIUM
+param.node_mass_k = 1
+param.round_digit = 1
 
-s = Structure(problem, 1, 1, 1, 1, [0,0,2,2])
-s.init_random(nodes_range=[0,3], area_range=[0.001, 10])
+s = Structure(problem, param)
+s.init_random([0,1], [1000,1000.1])
+s.compute()
 
-s.add_node(2,2)
-s.remove_node(3)
-s.plot(axis)
-
+plot_structure(s)
 show()

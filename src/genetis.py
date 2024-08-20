@@ -71,20 +71,17 @@ def sharing(population, index: int, threshold: float) -> int:
 
     return sharing
     
-def mutate(s: Structure, node_pos_k, area_k, connection_k, add_node_k, delete_node_k, corner, area) -> Structure:
+def mutate(s: Structure, node_pos_k, area_k, connection_k, add_node_k, delete_node_k, area) -> Structure:
     
-    min_x = corner[0]
-    min_y = corner[1]
-    max_x = corner[2]
-    max_y = corner[3]
+    corner = s._parameters.corner
     k = [node_pos_k, area_k, connection_k, add_node_k, delete_node_k]
     mutation_type = np.random.choice([1, 2, 3, 4, 5], 1, k)[0]
     
     if mutation_type == 1:
         if s._n_constrain != len(s._nodes):
             i = random.randrange(s._n_constrain, len(s._nodes))
-            new_x = random.uniform(min_x, max_x)
-            new_y = random.uniform(min_y, max_y)
+            new_x = random.uniform(corner.min_x, corner.max_x)
+            new_y = random.uniform(corner.min_y, corner.max_y)
               
             s._nodes[i,0] = new_x
             s._nodes[i,1] = new_y
@@ -95,8 +92,8 @@ def mutate(s: Structure, node_pos_k, area_k, connection_k, add_node_k, delete_no
     elif mutation_type == 3:
         return connection_mutation(s)
     elif mutation_type == 4:
-        new_x = random.uniform(min_x, max_x)
-        new_y = random.uniform(min_y, max_y)
+        new_x = random.uniform(corner.min_x, corner.max_x)
+        new_y = random.uniform(corner.min_y, corner.max_y)
         s.add_node(new_x, new_y, area)
         return s
     elif mutation_type == 5:

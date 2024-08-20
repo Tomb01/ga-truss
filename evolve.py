@@ -90,23 +90,24 @@ for e in range(0, EPOCH):
     
     while i < POPULATION-elite_count and len(idx) > 2:
         idx_p1 = binary_turnament(idx)
-        idx_p2 = binary_turnament(idx)
+        idx_tmp = np.delete(idx, [idx_p1])
+        idx_p2 = binary_turnament(idx_tmp)
         p1 = idx[idx_p1]
         p2 = idx[idx_p2]
-        if p1 != p2:
-            parent1 = sorted_population[p1]
-            parent2 = sorted_population[p2]
-            c = crossover(parent1, parent2, len(problem), fitness[p1], fitness[p2])
-            if np.random.choice([0,1], 1, [1-MUTANT_RATIO, MUTANT_RATIO])[0] == 1:
-                c = mutate(c, MUTATION_NODE_POSITION, MUTATION_AREA, MUTATION_CONNECTION, MUTATION_NODE_INSERT, MUTATION_NODE_DELETE, area_range)
-            child_fitness = c.compute()
-            family_fitness = np.array([fitness[p1], fitness[p2], child_fitness])
-            family = np.array([parent1, parent2, c])
-            family_idx = np.argsort(family_fitness)
-            new_population[i] = family[family_idx[0]]
-            new_population[i+1] = family[family_idx[1]]
-            i = i+2
-            idx = np.delete(idx, [idx_p1, idx_p2])
+        idx = np.delete(idx, [idx_p1, idx_p2])
+
+        parent1 = sorted_population[p1]
+        parent2 = sorted_population[p2]
+        c = crossover(parent1, parent2, len(problem), fitness[p1], fitness[p2])
+        if np.random.choice([0,1], 1, [1-MUTANT_RATIO, MUTANT_RATIO])[0] == 1:
+            c = mutate(c, MUTATION_NODE_POSITION, MUTATION_AREA, MUTATION_CONNECTION, MUTATION_NODE_INSERT, MUTATION_NODE_DELETE, area_range)
+        child_fitness = c.compute()
+        family_fitness = np.array([fitness[p1], fitness[p2], child_fitness])
+        family = np.array([parent1, parent2, c])
+        family_idx = np.argsort(family_fitness)
+        new_population[i] = family[family_idx[0]]
+        new_population[i+1] = family[family_idx[1]]
+        i = i+2
             
     #new_population[-2] = sorted_population[0]
     new_population[-elite_count:] = sorted_population[:elite_count]

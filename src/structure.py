@@ -2,6 +2,7 @@ import numpy as np
 from random import randrange, uniform
 from src.plot import plot_structure
 from src.operations import solve, make_sym, distance, lenght, FLOAT_MAX
+from typing import List
    
 def Node(x: float, y: float, vx: bool = False, vz: bool = False, Px: float = 0, Pz: float = 0):
     return np.array([x,y,0,0,int(vx),int(vz),0,0,Px,Pz,0], np.float64)
@@ -28,49 +29,70 @@ def decode_innovations(innovation: str):
 
 TRUSS_DIMENSION = 7
 
+class SpaceArea:
+    min_x: float
+    min_y: float
+    max_x: float
+    max_y: float
+    
+    def __init__(self, x1,y1,x2,y2) -> None:
+        self.min_x = x1
+        self.max_x = x2
+        self.min_y = y1
+        self.max_y = y2
+
+class Material: 
+    yield_strenght: float
+    density: float
+    elastic_modulus: float
+    
+    def __init__(self, Re, rho, E) -> None:
+        self.yield_strenght = Re
+        self.density = rho
+        self.elastic_modulus = E
+        
+MATERIAL_ALLUMINIUM = Material(72000, 240, 0.00000271)
+    
+class StructureParameters:
+    material: Material
+    node_mass_k: float
+    Fos_target: float
+    crossover_radius: float    
+    round_digit: int
+    corner: SpaceArea
+
 class Structure:
     
     _reactions: int
-    elastic_modulus: float
+    _parameters: StructureParameters
     _n_constrain: int
     _nodes: np.array
     _trusses: np.array
     _valid: bool
     _innovations: np.array
-    _node_mass_k: float
-    _Fos_target: float
-    _yield_strenght: float
-    _crossover_radius: float    
-    _round_digit: int
     
-    def __init__(self, contrain_nodes: np.array, elastic_modulus, Fos_target, node_mass, yield_strenght, density, corner, crossover_radius, round_digit):
+    def __init__(self, contrain_nodes: np.array, params: StructureParameters):
         self._nodes = np.array(contrain_nodes)
         self._n_constrain = len(self._nodes)
-        self.elastic_modulus = elastic_modulus
-        self._Fos_target = Fos_target
-        self._node_mass_k = node_mass
-        self._yield_strenght = yield_strenght
+        self._parameters = params
         self._reactions = np.sum(self._nodes[:,4:6])
         self._valid = False
-        self._corner = corner
-        self.density = density
-        self._crossover_radius = crossover_radius
-        self._round_digit = round_digit
         
     def init(self, nodes: np.array):
         self._nodes = np.vstack((self._nodes, nodes))
         n = len(self._nodes)
         self._trusses = np.zeros((TRUSS_DIMENSION, n, n))
     
-    def init_random(self, max_nodes, area):
+    def init_random(self, nodes_range, area_range):
         
-        n = randrange(max_nodes[0], max_nodes[1]) + self._n_constrain
+        n = randrange(nodes_range[0], nodes_range[1]) + self._n_constrain
         self._nodes.resize((n, self._nodes.shape[1]))
         
         self._trusses = np.zeros((TRUSS_DIMENSION,n,n))
+        allowed_space = self._parameters.corner
         for i in range(self._n_constrain,n):
-            x = uniform(self._corner[0], self._corner[2])
-            y = uniform(self._corner[1], self._corner[3])
+            x = uniform(allowed_space.min_x, allowed_space.max_x)
+            y = uniform(allowed_space.min_y, allowed_space.max_y)
             self._nodes[i] = Node(x, y)
         
         # struttura al più stabile m = 2n
@@ -87,14 +109,17 @@ class Structure:
         adj = np.zeros((n,n))
         adj[np.triu_indices(n, 1)] = triu
         self._trusses[0] = make_sym(adj)
-        area_matrix = np.round(np.random.uniform(area[0], area[1], size=(n,n)), self._round_digit)
+        area_matrix = np.round(np.random.uniform(area_range[0], area_range[1], size=(n,n)), self._parameters.round_digit)
         self._trusses[1] = np.multiply(make_sym(np.triu(area_matrix)),self._trusses[0])
 
         self.set_innovations()
         
     def check(self) -> bool:
         # Statically indeterminate if 2n < m
-        edge_node = np.sum(self._trusses[0], axis=0)[0:self._n_constrain]
+        if self._n_constrain == len(self._nodes):
+            edge_node = np.sum(self._trusses[0], axis=0)
+        else:
+            edge_node = np.sum(self._trusses[0], axis=0)[0:self._n_constrain]
         if np.all(edge_node >= 1):
             if self.get_DOF()>0:
                 return False
@@ -116,7 +141,7 @@ class Structure:
         new_adj[1, :(n-1), :(n-1)] = self._trusses[1]
         
         conn = np.concatenate([np.ones(2), np.zeros(int(n-2-1))])
-        areas = np.round(np.random.uniform(area[0], area[1], size=n-1), self._round_digit)
+        areas = np.round(np.random.uniform(area[0], area[1], size=n-1), self._parameters.round_digit)
         np.random.shuffle(conn)
         areas = np.multiply(areas, conn)
         
@@ -140,7 +165,7 @@ class Structure:
     def solve(self):
         if self.check():
             try:
-                solve(self._nodes, self._trusses, self.elastic_modulus)
+                solve(self._nodes, self._trusses, self._parameters.material.elastic_modulus)
                 self._valid = True
             except Exception:
                 self._valid = False
@@ -156,7 +181,7 @@ class Structure:
             #self._nodes[i,10] = encode_innovation(self._nodes[i,0], 0, self._nodes[i,1], 0)
             for j in range(0,n):
                 if i!=j:
-                    self._innovations[i,j] = encode_innovation(self._nodes[i,0], self._nodes[j,0], self._nodes[i,1], self._nodes[j,1], self._crossover_radius, self._round_digit)
+                    self._innovations[i,j] = encode_innovation(self._nodes[i,0], self._nodes[j,0], self._nodes[i,1], self._nodes[j,1], self._parameters.crossover_radius, self._parameters.round_digit)
                     self._innovations[j,i] = self._innovations[i,j]
 
         #self._i[5] = make_sym(self._trusses[5])
@@ -171,7 +196,7 @@ class Structure:
             return FLOAT_MAX
         
         #print(np.min(-np.abs(self._trusses[3])))
-        if np.min(-np.abs(self._trusses[3])) < -self._yield_strenght * self._Fos_target:
+        if np.min(-np.abs(self._trusses[3])) < -self._parameters.material.yield_strenght * self._parameters.Fos_target:
             # collapse
             return FLOAT_MAX
         
@@ -179,8 +204,8 @@ class Structure:
         n = len(self._nodes)
         l = self._trusses[6]
         mass = np.multiply(l, self._trusses[1])
-        mass = mass * self.density
-        max_load = self._trusses[2]*self._Fos_target
+        mass = mass * self._parameters.material.density
+        max_load = self._trusses[2]*self._parameters.Fos_target
         e = np.abs(np.divide(max_load, mass, out = np.zeros((n,n)), where=self._trusses[2]!=0))
         self._trusses[5] = e
         #print(e)

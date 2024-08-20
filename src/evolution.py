@@ -16,7 +16,7 @@ def epoch(problem: np.array, n_population=100, yield_stress = 1, to_keep = 0.5,e
             if e == 0: # or p > n_population//4:
                 # init all random
                 s = Structure(problem, elastic_modulus)
-                s.init_random(area=area, max_nodes=max_node)
+                s.init_random(area_range=area, nodes_range=max_node)
                 population[p] = s
                 
             population[p].solve()

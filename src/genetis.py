@@ -19,7 +19,7 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     n1 = innov1.shape[0]
     n2 = innov2.shape[0]
     
-    child = Structure(parent1._nodes[0:constrain_n], parent1.elastic_modulus, parent1._Fos_target, parent1._node_mass_k, parent1._yield_strenght, parent1.density, parent1._corner, parent1._crossover_radius, parent1._round_digit)
+    child = Structure(parent1._nodes[0:constrain_n], parent1._parameters)
     child.init(parent1._nodes[constrain_n:])
     child._trusses = np.copy(parent1._trusses)
     
@@ -54,8 +54,8 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     return child
     
 def get_distance(s1: Structure, s2: Structure, K_mass = 1, K_cm = 1, K_nodes = 1) -> float:
-    mass_1 = np.sum(s1._trusses[6]*s1.density)
-    mass_2 = np.sum(s2._trusses[6]*s2.density)
+    mass_1 = np.sum(s1._trusses[6]*s1._parameters.material.density)
+    mass_2 = np.sum(s2._trusses[6]*s2._parameters.material.density)
     
     #print(mass_2-mass_1)
     return abs(K_mass*(mass_2-mass_1) + K_nodes*(len(s2._nodes) - len(s2._nodes)))

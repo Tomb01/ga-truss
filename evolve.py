@@ -58,7 +58,7 @@ crossover_count = POPULATION-mutant_count-elite_count
 # Initial population -> random
 for i in range(0, POPULATION):
     s = Structure(problem, elastic_modulus, Fos_target, node_mass, yield_strenght, density=density, corner=corner, crossover_radius=CROSSOVER_RADIUS, round_digit=round_digit)
-    s.init_random(max_nodes=START_NODE_RANGE, area=area)
+    s.init_random(nodes_range=START_NODE_RANGE, area_range=area)
     new_population[i] = s
     
 # Evolution

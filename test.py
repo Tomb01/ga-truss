@@ -13,7 +13,7 @@ problem = [
 figure, axis = plt.subplots(1,3)
 
 s = Structure(problem, 1, 1, 1, 1, [0,0,2,2])
-s.init_random(max_nodes=[0,3], area=[0.001, 10])
+s.init_random(nodes_range=[0,3], area_range=[0.001, 10])
 
 s.add_node(2,2)
 s.remove_node(3)

@@ -227,12 +227,13 @@ class Structure:
             # invalid
             return 1
         
-        if np.max(np.abs(self._trusses[3])) > self._parameters.material.yield_strenght/self._parameters.safety_factor_yield:
-            return 1
+        max_stress = self.is_broken()
+        if max_stress:
+            return 1-10**(-max_stress)
 
         # Compute structural efficency matrix
         n = len(self._nodes)
-        self._trusses[5] = 1 - np.divide(
+        self._trusses[5] = np.divide(
             np.abs(self._trusses[3]),
             (
                 self._parameters.material.yield_strenght
@@ -242,13 +243,19 @@ class Structure:
             where=self._trusses[0] != 0,
         )
         
-        tot_e = np.sum(self._trusses[5])
-        w_e = 1-np.divide(self._trusses[5], tot_e)
-        #mass = self._trusses[1]*self._trusses[6]
-        #tot_m = np.sum(mass)
-        #w_m = 1-np.divide(mass, tot_m)
+        eff = np.mean(self._trusses[5], where=(self._trusses[0]!=0))
+
+        if eff <= 1:
+            return 1-eff
+        else:
+            return 1-10**(-eff)
         
-        return np.sum(self._trusses[5]*w_e)/np.sum(w_e)
+    def is_broken(self) -> float:
+        max_stress = np.max(np.abs(self._trusses[3]))/self._parameters.material.yield_strenght/self._parameters.safety_factor_yield
+        if  max_stress > 1:
+            return max_stress
+        else:
+            return 0
         
     def compute(self) -> np.array:
         self.solve()

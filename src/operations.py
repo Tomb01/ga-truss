@@ -111,6 +111,7 @@ def solve(nodes, trusses, elastic_modulus) -> np.array:
     # Assign forces to trusses matrix
     trusses[2] = Ku*ds[2] + Kv*ds[3]
     # Calculate tension s = N/A, assign to trusses matrix
+    #print(trusses[2])
     trusses[3] = np.divide(trusses[2], trusses[1], out=np.zeros_like(trusses[1]), where=trusses[1]!=0)
 
     return nodes, trusses

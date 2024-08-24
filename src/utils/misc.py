@@ -9,3 +9,11 @@ def make_brige_coordinate(truss_length: float, bottom_truss: int) -> np.array:
         coordinates[i, 1] = (i%2)*y_top
         
     return coordinates
+
+def node2table(node: np.array) -> str:
+    node = node.tolist()
+    str = ""
+    for j in range(0, len(node)):
+        node[j] = ['{:.3f}'.format(x) for x in node[j]]
+        str += ";".join(node[j]) + "\n"
+    return str

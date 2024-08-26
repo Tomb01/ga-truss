@@ -11,7 +11,7 @@ import datetime
 # Problem parameter
 problem = [
     Node(0,0,True,True,0,0),
-    Node(1,1,False,False,0,1e6),
+    Node(1,1,False,False,0,1),
     Node(2,0,True,True,0,0)
 ]
 
@@ -26,14 +26,13 @@ param.round_digit = 3
 area_range = [1,10]
 
 # evolution parameter
-EPOCH = 3
+EPOCH = 20
 POPULATION = 10
 START_NODE_RANGE = [0,2*len(problem)]
 ELITE_RATIO = 0.1
-MUTANT_RATIO = 0.1
+MUTANT_RATIO = 0.2
 NICHE_RADIUS = 0.01
 CROSSOVER_RADIUS = 0.1
-MAX_SPIECE = POPULATION
 
 # Mutation
 MUTATION_NODE_POSITION = 2.0
@@ -52,10 +51,8 @@ current_population = np.empty(POPULATION, dtype=np.object_)
 new_population = np.empty(POPULATION, dtype=np.object_)
 sorted_population = np.empty(POPULATION, dtype=np.object_)
 fitness = np.zeros((POPULATION), dtype=float)
-spiece = np.zeros_like(current_population, dtype=int)
+adj_fitness = np.zeros((POPULATION), dtype=float)
 db = Database(".trash/"+datetime.date.today().strftime('%Y%m%d%H%M%S') +".db")
-spiece_master = np.array([0])
-spiece_count = 0
 
 fitness_curve = np.zeros(EPOCH)
 """figure, axis = plt.subplots(1,5)
@@ -74,41 +71,34 @@ for i in range(0, POPULATION):
     s = Structure(problem, param)
     s.init_random(nodes_range=START_NODE_RANGE, area_range=area_range)
     new_population[i] = s
-
+    
 # Evolution
 for e in range(0, EPOCH):
     current_population = new_population 
     new_population = np.empty(POPULATION, dtype=np.object_)
-    db.append_generation(POPULATION,0)
+    #db.append_generation(POPULATION,0)
     
     # Calculate fitness and adj fitness
     for i in range(0, POPULATION):
         fitness[i] = current_population[i].compute()    
-        if e == 0:
-            spiece_master[0] = fitness[i]
-            spiece[i] = spiece_master[0]
-        else:
-            compatibility = np.logical_and(spiece_master >= fitness[i]-NICHE_RADIUS, spiece_master <= fitness[i]+NICHE_RADIUS)
-            if np.any(compatibility):
-                s_index = np.argmax(compatibility==True)
-                spiece[i] = s_index
-            else:
-                spiece_count = spiece_count+1
-                spiece_master = np.append(spiece_master, fitness[i])
-                spiece[i] = int(spiece_count)
-        db.save_structure(e+1, current_population[i])
+        #db.save_structure(e+1, current_population[i])
+    
+    """for i in range(0, POPULATION):
+        niche_count = sharing(fitness, i, NICHE_RADIUS)
+        #print(niche_count)
+        adj_fitness[i] = fitness[i]/niche_count
+        #print(fitness[i], adj_fitness[i])"""
             
     # Crossover
     i = 0
     idx = np.arange(POPULATION)
-    sorted_idx = np.argsort(fitness)
+    sorted_idx = np.argsort(adj_fitness)
     #print(sorted_idx)
     sorted_population = current_population[sorted_idx]
     fitness = fitness[sorted_idx]
-    spiece = spiece[sorted_idx]
-    #adj_fitness = adj_fitness[sorted_idx]
-    print(spiece)
-    print(fitness)
+    adj_fitness = adj_fitness[sorted_idx]
+    
+    #print(fitness)
     
     while i < POPULATION-elite_count:
         p1 = binary_turnament(-fitness)
@@ -137,14 +127,14 @@ for e in range(0, EPOCH):
             b_count = b_count+1"""
     
     print(e, "---", sorted_population[0].compute())
-    if e==EPOCH-1: 
+    """if e==EPOCH-1: 
         figure1, axis1 = plt.subplots(1,POPULATION)
         for j in range(0, POPULATION):
             plot_structure(sorted_population[j], figure1, axis1[j], annotation=False, area=area_range)
         
         figure1.set_figheight(5)
         figure1.set_figwidth(15)
-        plt.show(block=True)
+        plt.show(block=True)"""
 
 best[-1] = sorted_population[0]
 
@@ -153,7 +143,7 @@ figure.set_figheight(5)
 figure.set_figwidth(15)
 axis[-1].plot(range(0, EPOCH), fitness_curve)
 plot_structure(sorted_population[0], figure, axis[0], annotation=False, area=area_range)
-print(sorted_population[0].is_broken())
+print(sorted_population[0].is_broken(), sorted_population[0].check())
 show()
         
         

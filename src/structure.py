@@ -64,13 +64,13 @@ class Material:
         self.elastic_modulus = E
 
 
-MATERIAL_ALLUMINIUM = Material(72000, 240, 0.00000271)
-
+MATERIAL_ALLUMINIUM = Material(240, 0.00000271, 72000)
 
 class StructureParameters:
     material: Material
     node_mass_k: float
     safety_factor_yield: float
+    safety_factor_buckling: float
     crossover_radius: float
     round_digit: int
     corner: SpaceArea
@@ -138,14 +138,16 @@ class Structure:
             edge_node = np.sum(self._trusses[0], axis=0)
         else:
             edge_node = np.sum(self._trusses[0], axis=0)[0 : self._n_constrain]
-        if np.all(edge_node >= 1):
+        if np.all(edge_node > 1):
             if self.get_DOF() > 0:
                 return False
             else:
                 return True
 
+    def get_node_connection(self) -> int:
+        return np.sum(self._trusses[0], axis=0)
+        
     def get_DOF(self) -> int:
-        # print(2*len(self._nodes), self.get_edge_count(), self._reactions)
         return 2 * len(self._nodes) - self.get_edge_count() - self._reactions
 
     def get_edge_count(self) -> int:
@@ -226,36 +228,32 @@ class Structure:
         if not self._valid:
             # invalid
             return 1
-        
-        max_stress = self.is_broken()
-        if max_stress:
-            return 1-10**(-max_stress)
 
         # Compute structural efficency matrix
         n = len(self._nodes)
+        diameter = np.power(4*self._trusses[1]/3.14, 1/2)
+        stress_cr = np.divide((3.14**2)*self._parameters.material.elastic_modulus*np.power(diameter/4,2), np.power(self._trusses[6],2)*self._parameters.safety_factor_buckling, out=np.zeros_like(self._trusses[1]), where = self._trusses[0] != 0)
+        allowed_tensile_stress = self._parameters.material.yield_strenght/ self._parameters.safety_factor_yield
+        tensile_broken = np.logical_and(stress_cr >= allowed_tensile_stress, stress_cr<0)
+        stress_cr[tensile_broken] = allowed_tensile_stress
         self._trusses[5] = np.divide(
             np.abs(self._trusses[3]),
-            (
-                self._parameters.material.yield_strenght
-                / self._parameters.safety_factor_yield
-            ),
+            stress_cr,
             out=np.zeros((n, n)),
             where=self._trusses[0] != 0,
         )
         
-        eff = np.mean(self._trusses[5], where=(self._trusses[0]!=0))
-
-        if eff <= 1:
+        max_eff = np.max(self._trusses[5])
+        if max_eff > 1:
+            # broken
+            return 1-10**(-max_eff)
+        else:
+            eff = np.mean(self._trusses[5], where=(self._trusses[0]!=0))
             return 1-eff
-        else:
-            return 1-10**(-eff)
         
-    def is_broken(self) -> float:
-        max_stress = np.max(np.abs(self._trusses[3]))/self._parameters.material.yield_strenght/self._parameters.safety_factor_yield
-        if  max_stress > 1:
-            return max_stress
-        else:
-            return 0
+    def is_broken(self, gr1 = 1.5) -> bool:
+        
+        return np.max(self._trusses[5]) > 1
         
     def compute(self) -> np.array:
         self.solve()

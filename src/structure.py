@@ -100,7 +100,11 @@ class Structure:
 
     def init_random(self, nodes_range, area_range):
 
-        n = randrange(nodes_range[0], nodes_range[1]) + self._n_constrain
+        if isinstance(nodes_range, int):
+            n = nodes_range
+        else:
+            n = randrange(nodes_range[0], nodes_range[1]) 
+        n = n + self._n_constrain
         self._nodes.resize((n, self._nodes.shape[1]))
 
         self._trusses = np.zeros((TRUSS_DIMENSION, n, n))
@@ -134,13 +138,15 @@ class Structure:
 
     def check(self) -> bool:
         # Statically indeterminate if 2n < m
-        free_nodes = (self._nodes[:,4]+self._nodes[:,5])>0
+        free_nodes = (self._nodes[:,4]+self._nodes[:,5])==0
         edge_node = np.sum(self._trusses[0], axis=0)[free_nodes]
         if np.all(edge_node > 1):
             if self.get_DOF() > 0:
                 return False
             else:
                 return True
+        else:
+            return False
 
     def get_node_connection(self) -> int:
         return np.sum(self._trusses[0], axis=0)
@@ -244,7 +250,7 @@ class Structure:
         max_eff = np.max(self._trusses[5])
         if max_eff > 1:
             # broken
-            return 1 #-10**(-max_eff)
+            return 1 -10**(-max_eff)
         else:
             eff = np.mean(self._trusses[5], where=(self._trusses[0]!=0))
             return 1-eff

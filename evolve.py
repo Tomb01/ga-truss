@@ -11,38 +11,38 @@ import datetime
 # Problem parameter
 problem = [
     Node(0,0,True,True,0,0),
-    Node(1,1,False,False,0,1e5),
-    Node(2,0,True,True,0,0)
+    Node(1,2,False,False,1e5,0),
+    Node(1,0,True,True,0,0)
 ]
 
 param = StructureParameters()
-param.corner = SpaceArea(-2,0,2,4)
+param.corner = SpaceArea(-2,0,4,4)
 param.crossover_radius = 0.2
 param.safety_factor_yield = 1
 param.safety_factor_buckling = 1.5
 param.material = MATERIAL_ALLUMINIUM
 param.node_mass_k = 1
-param.round_digit = 3
+param.round_digit = 2
 
-area_range = [1,1.5]
+area_range = [1.5,2]
 
 # evolution parameter
-EPOCH = 100
+EPOCH = 50
 POPULATION = 10
-START_NODE_RANGE = [0,2*len(problem)]
+START_NODE_RANGE = [0,10]
 ELITE_RATIO = 0.1
-MUTATION_RATIO = 1
+MUTATION_RATIO = 0.1
 NICHE_RADIUS = 0.01
 CROSSOVER_RADIUS = 0.1
 
 # Mutation
-MUTATION_NODE_POSITION = 2.0
-MUTATION_AREA = 10
-MUTATION_CONNECTION = 1.0
-MUTATION_NODE_DELETE = 1.0
-MUTATION_NODE_INSERT = 10
+MUTATION_NODE_POSITION = 2
+MUTATION_AREA = 1
+MUTATION_CONNECTION = 1
+MUTATION_NODE_DELETE = 2
+MUTATION_NODE_INSERT = 1
 # Fix mutation
-mutation_k = [MUTATION_NODE_POSITION,MUTATION_AREA,MUTATION_CONNECTION,MUTATION_NODE_DELETE,MUTATION_NODE_INSERT]
+mutation_k = np.array([MUTATION_NODE_POSITION,MUTATION_AREA,MUTATION_CONNECTION,MUTATION_NODE_DELETE,MUTATION_NODE_INSERT], dtype=np.float64)
 mutation_k_tot = np.sum(mutation_k)
 mutation_k = np.divide(mutation_k, mutation_k_tot, out=np.zeros_like(mutation_k), where=(mutation_k!=0))
 
@@ -69,6 +69,7 @@ crossover_count = POPULATION-mutant_count-elite_count
 # Initial population -> random
 for i in range(0, POPULATION):
     s = Structure(problem, param)
+    #n = i%START_NODE_RANGE[1]
     s.init_random(nodes_range=START_NODE_RANGE, area_range=area_range)
     new_population[i] = s
     
@@ -85,7 +86,7 @@ for e in range(0, EPOCH):
         current_fitness = current_population[i].compute()    
         niche_population = len(np.where(fitness==current_fitness)[0])
         fitness[i] = current_fitness
-        adj_fitness[i] = current_fitness*(1+niche_population)
+        adj_fitness[i] = current_fitness*2**(niche_population)
         #db.save_structure(e+1, current_population[i])
     
     """for i in range(0, POPULATION):

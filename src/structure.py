@@ -134,10 +134,8 @@ class Structure:
 
     def check(self) -> bool:
         # Statically indeterminate if 2n < m
-        if self._n_constrain == len(self._nodes):
-            edge_node = np.sum(self._trusses[0], axis=0)
-        else:
-            edge_node = np.sum(self._trusses[0], axis=0)[0 : self._n_constrain]
+        free_nodes = (self._nodes[:,4]+self._nodes[:,5])>0
+        edge_node = np.sum(self._trusses[0], axis=0)[free_nodes]
         if np.all(edge_node > 1):
             if self.get_DOF() > 0:
                 return False
@@ -246,13 +244,12 @@ class Structure:
         max_eff = np.max(self._trusses[5])
         if max_eff > 1:
             # broken
-            return 1-10**(-max_eff)
+            return 1 #-10**(-max_eff)
         else:
             eff = np.mean(self._trusses[5], where=(self._trusses[0]!=0))
             return 1-eff
         
-    def is_broken(self, gr1 = 1.5) -> bool:
-        
+    def is_broken(self) -> bool:
         return np.max(self._trusses[5]) > 1
         
     def compute(self) -> np.array:

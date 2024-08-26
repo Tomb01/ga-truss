@@ -74,7 +74,7 @@ def sharing(population, index: int, threshold: float) -> int:
     
 def mutate(s: Structure, mutation_k, area) -> Structure:
     
-    mutation_type = np.random.choice([1, 2, 3, 4, 5], 1, mutation_k)[0]
+    mutation_type = np.random.choice([1, 2, 3, 4, 5], p=mutation_k)
     
     if mutation_type == 1:
         return node_position_mutation(s)

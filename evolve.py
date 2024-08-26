@@ -11,7 +11,7 @@ import datetime
 # Problem parameter
 problem = [
     Node(0,0,True,True,0,0),
-    Node(1,1,False,False,0,1),
+    Node(1,1,False,False,0,1e5),
     Node(2,0,True,True,0,0)
 ]
 
@@ -19,18 +19,19 @@ param = StructureParameters()
 param.corner = SpaceArea(-2,0,2,4)
 param.crossover_radius = 0.2
 param.safety_factor_yield = 1
+param.safety_factor_buckling = 1.5
 param.material = MATERIAL_ALLUMINIUM
 param.node_mass_k = 1
 param.round_digit = 3
 
-area_range = [1,10]
+area_range = [1,1.5]
 
 # evolution parameter
-EPOCH = 20
+EPOCH = 100
 POPULATION = 10
 START_NODE_RANGE = [0,2*len(problem)]
 ELITE_RATIO = 0.1
-MUTANT_RATIO = 0.2
+MUTATION_RATIO = 1
 NICHE_RADIUS = 0.01
 CROSSOVER_RADIUS = 0.1
 
@@ -43,8 +44,7 @@ MUTATION_NODE_INSERT = 10
 # Fix mutation
 mutation_k = [MUTATION_NODE_POSITION,MUTATION_AREA,MUTATION_CONNECTION,MUTATION_NODE_DELETE,MUTATION_NODE_INSERT]
 mutation_k_tot = np.sum(mutation_k)
-k = np.divide(mutation_k, mutation_k_tot, out=np.zeros_like(mutation_k), where=(mutation_k!=0))
-print(k)
+mutation_k = np.divide(mutation_k, mutation_k_tot, out=np.zeros_like(mutation_k), where=(mutation_k!=0))
 
 # Init variables
 current_population = np.empty(POPULATION, dtype=np.object_)
@@ -63,7 +63,7 @@ b_count = 0
 
 # New population distribution
 elite_count = round(ELITE_RATIO*POPULATION)
-mutant_count = round(MUTANT_RATIO*POPULATION)
+mutant_count = round(MUTATION_RATIO*POPULATION)
 crossover_count = POPULATION-mutant_count-elite_count
 
 # Initial population -> random
@@ -76,11 +76,16 @@ for i in range(0, POPULATION):
 for e in range(0, EPOCH):
     current_population = new_population 
     new_population = np.empty(POPULATION, dtype=np.object_)
+    fitness = np.zeros((POPULATION), dtype=float)
+    adj_fitness = np.zeros((POPULATION), dtype=float)
     #db.append_generation(POPULATION,0)
     
     # Calculate fitness and adj fitness
     for i in range(0, POPULATION):
-        fitness[i] = current_population[i].compute()    
+        current_fitness = current_population[i].compute()    
+        niche_population = len(np.where(fitness==current_fitness)[0])
+        fitness[i] = current_fitness
+        adj_fitness[i] = current_fitness*(1+niche_population)
         #db.save_structure(e+1, current_population[i])
     
     """for i in range(0, POPULATION):
@@ -101,13 +106,14 @@ for e in range(0, EPOCH):
     #print(fitness)
     
     while i < POPULATION-elite_count:
-        p1 = binary_turnament(-fitness)
-        p2 = binary_turnament(-fitness)
+        p1 = binary_turnament(-adj_fitness)
+        p2 = binary_turnament(-adj_fitness)
         parent1 = sorted_population[p1]
         parent2 = sorted_population[p2]
         
-        c = crossover(parent1, parent2, len(problem), -fitness[p1], -fitness[p2])
-        if np.random.choice([0,1], 1, [1-MUTANT_RATIO, MUTANT_RATIO])[0] == 1:
+        c = crossover(parent1, parent2, len(problem), -adj_fitness[p1], -adj_fitness[p2])
+        if np.random.choice([0,1], p=[1-MUTATION_RATIO, MUTATION_RATIO]) == 1 and fitness[p1]==fitness[p2]:
+            #print("mutate")
             c = mutate(c, mutation_k, area_range)
         child_fitness = c.compute()
         family_fitness = np.array([fitness[p1], fitness[p2], child_fitness])

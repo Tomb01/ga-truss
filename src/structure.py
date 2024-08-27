@@ -281,12 +281,16 @@ class Structure:
         )
         
         max_eff = np.max(self._trusses[5])
+        stress_eff = 0
         if max_eff > 1:
             # broken
-            return 1-10**(-max_eff)
+            stress_eff = 10**(-max_eff)
         else:
             eff = np.mean(self._trusses[5], where=(self._trusses[0]!=0))
-            return 1-eff
+            stress_eff = eff
+        
+        mass = (np.sum(self._trusses[1]*self._trusses[6])+len(self._nodes)*self._parameters.node_mass_k)
+        return 1 - stress_eff/mass
         
     def is_broken(self) -> bool:
         return np.max(self._trusses[5]) > 1

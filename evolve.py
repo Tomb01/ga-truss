@@ -11,7 +11,7 @@ import datetime
 # Problem parameter
 problem = [
     Node(0,0,True,True,0,0),
-    Node(1,2,False,False,1e3,0),
+    Node(1,2,False,False,1e4,0),
     Node(1,0,True,True,0,0)
 ]
 
@@ -27,18 +27,18 @@ param.round_digit = 2
 area_range = [1.5,2]
 
 # evolution parameter
-EPOCH = 20
-POPULATION = 10
+EPOCH = 10
+POPULATION = 100
 START_NODE_RANGE = [0,20]
 ELITE_RATIO = 0.1
 MUTATION_RATIO = 0.2
-KILL_RATIO = 0.1
+KILL_RATIO = 0.5
 NICHE_RADIUS = 0.01
 CROSSOVER_RADIUS = 0.1
 
 # Mutation
 MUTATION_NODE_POSITION = 2
-MUTATION_AREA = 1
+MUTATION_AREA = 0
 MUTATION_CONNECTION = 1
 MUTATION_NODE_DELETE = 2
 MUTATION_NODE_INSERT = 1

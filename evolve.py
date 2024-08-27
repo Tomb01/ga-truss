@@ -11,7 +11,7 @@ import datetime
 # Problem parameter
 problem = [
     Node(0,0,True,True,0,0),
-    Node(1,2,False,False,1e5,0),
+    Node(1,2,False,False,1e3,0),
     Node(1,0,True,True,0,0)
 ]
 
@@ -27,11 +27,12 @@ param.round_digit = 2
 area_range = [1.5,2]
 
 # evolution parameter
-EPOCH = 10
-POPULATION = 100
-START_NODE_RANGE = [0,10]
+EPOCH = 100
+POPULATION = 10
+START_NODE_RANGE = [0,20]
 ELITE_RATIO = 0.1
-MUTATION_RATIO = 0.1
+MUTATION_RATIO = 0.2
+KILL_RATIO = 0.1
 NICHE_RADIUS = 0.01
 CROSSOVER_RADIUS = 0.1
 
@@ -63,8 +64,8 @@ b_count = 0
 
 # New population distribution
 elite_count = round(ELITE_RATIO*POPULATION)
-mutant_count = round(MUTATION_RATIO*POPULATION)
-crossover_count = POPULATION-mutant_count-elite_count
+kill_count = round(KILL_RATIO*POPULATION)
+crossover_count = POPULATION-kill_count-elite_count
 
 # Initial population -> random
 for i in range(0, POPULATION):
@@ -88,12 +89,6 @@ for e in range(0, EPOCH):
         fitness[i] = current_fitness
         adj_fitness[i] = current_fitness*2**(niche_population)
         #db.save_structure(e+1, current_population[i])
-    
-    """for i in range(0, POPULATION):
-        niche_count = sharing(fitness, i, NICHE_RADIUS)
-        #print(niche_count)
-        adj_fitness[i] = fitness[i]/niche_count
-        #print(fitness[i], adj_fitness[i])"""
             
     # Crossover
     i = 0
@@ -106,7 +101,7 @@ for e in range(0, EPOCH):
     
     #print(fitness)
     
-    while i < POPULATION-elite_count:
+    while i < POPULATION-elite_count-kill_count:
         p1 = binary_turnament(-adj_fitness)
         p2 = binary_turnament(-adj_fitness)
         parent1 = sorted_population[p1]
@@ -125,6 +120,12 @@ for e in range(0, EPOCH):
         i = i+2
             
     #new_population[-2] = sorted_population[0]
+    while i < POPULATION-elite_count:
+        s = Structure(problem, param)
+        s.init_random(nodes_range=START_NODE_RANGE, area_range=area_range)
+        new_population[i] = s
+        i = i+1
+        
     new_population[-elite_count:] = sorted_population[:elite_count]
     
     fitness_curve[e] = fitness[0]

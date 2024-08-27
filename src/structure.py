@@ -141,8 +141,8 @@ class Structure:
     def check(self) -> bool:
         # Statically indeterminate if 2n < m
         free_nodes = (self._nodes[:,4]+self._nodes[:,5])==0
-        edge_node = np.sum(self._trusses[0], axis=0)[free_nodes]
-        if np.all(edge_node > 1):
+        edge_node = np.sum(self._trusses[0], axis=0)
+        if np.all(edge_node[free_nodes] > 1) and np.all(edge_node > 0):
             if self.get_DOF() > 0:
                 self._valid = False
             else:
@@ -277,10 +277,12 @@ class Structure:
             where=self._trusses[0] != 0,
         )
         
+        print(stress_cr)
+        
         max_eff = np.max(self._trusses[5])
         if max_eff > 1:
             # broken
-            return 1 -10**(-max_eff)
+            return 1-10**(-max_eff)
         else:
             eff = np.mean(self._trusses[5], where=(self._trusses[0]!=0))
             return 1-eff

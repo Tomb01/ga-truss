@@ -94,6 +94,8 @@ class Structure:
         self._valid = False
 
     def init(self, nodes: np.array):
+        if isinstance(nodes, int):
+            nodes = np.zeros((nodes, 11))
         self._nodes = np.vstack((self._nodes, nodes))
         n = len(self._nodes)
         self._trusses = np.zeros((TRUSS_DIMENSION, n, n))
@@ -142,11 +144,29 @@ class Structure:
         edge_node = np.sum(self._trusses[0], axis=0)[free_nodes]
         if np.all(edge_node > 1):
             if self.get_DOF() > 0:
-                return False
+                self._valid = False
             else:
-                return True
+                self._valid = True
         else:
+            self._valid = False
+        
+        return self._valid
+        
+    def healing(self) -> bool:
+        free_nodes = (self._nodes[:,4]+self._nodes[:,5])==0
+        edge_node = np.sum(self._trusses[0], axis=0)
+        disjoint_nodes = np.logical_and(edge_node < 2, free_nodes)
+        if np.any(disjoint_nodes[0:self._n_constrain]):
+            # disjoint constrained node
             return False
+        else:
+            # delete disjoint nodes
+            #print(np.nonzero(disjoint_nodes)[0])
+            self.remove_node(np.nonzero(disjoint_nodes)[0])
+            #mobile_nodes = edge_node == 1
+            #print(mobile_nodes)
+            self.check()
+            return True
 
     def get_node_connection(self) -> int:
         return np.sum(self._trusses[0], axis=0)
@@ -182,27 +202,26 @@ class Structure:
         self._trusses = new_adj
 
     def remove_node(self, index):
-        if index < self._n_constrain:
-            raise Exception("Unable to remove contrain nodes")
-
-        self._nodes = np.delete(self._nodes, (index), axis=0)
-        self._trusses = np.delete(self._trusses, (index), axis=1)
-        self._trusses = np.delete(self._trusses, (index), axis=2)
+        if isinstance(index, int):
+            if index < self._n_constrain:
+                raise Exception("Unable to remove contrain nodes")
+            index = (index)
+        
+        self._nodes = np.delete(self._nodes, index, axis=0)
+        self._trusses = np.delete(self._trusses, index, axis=1)
+        self._trusses = np.delete(self._trusses, index, axis=2)
 
     def solve(self):
-        if self.check():
+        self.check()
+        if self._valid:
             try:
                 solve(
                     self._nodes,
                     self._trusses,
                     self._parameters.material.elastic_modulus,
                 )
-                self._valid = True
             except Exception:
                 self._valid = False
-        else:
-            self._valid = False
-            # raise ValueError("Invalid structure")
 
     def set_innovations(self):
         n = len(self._nodes)
@@ -226,7 +245,18 @@ class Structure:
 
     def get_innovations(self) -> np.array:
         return self._innovations
-
+    
+    def get_node_innovations(self) -> np.array:
+        n = len(self._nodes)
+        inn = np.empty(n, dtype=np.object_)
+        crossover_radius = self._parameters.crossover_radius
+        round_digit = self._parameters.round_digit
+        for i in range(0, n):
+            x = self._nodes[i, 0]
+            y = self._nodes[i, 1]
+            inn[i] = "{x_min:.6f}-{y_min:.6f}-{x_max:.6f}-{y_max:.6f}".format(x_max=round(x + crossover_radius, round_digit),x_min=round(x - crossover_radius, round_digit),y_max=round(y + crossover_radius, round_digit),y_min=round(y - crossover_radius, round_digit),)
+        return inn
+        
     def calculate_fitness(self) -> float:
 
         if not self._valid:

@@ -1,58 +1,63 @@
 from src.structure import Structure
 import numpy as np
-from src.operations import upper_tri_masking
+from src.operations import upper_tri_masking, make_sym
 import random
 
 def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: float, fit2: float) -> Structure:
-    # parent 1 is dominant
-    parent1.set_innovations()
-    parent2.set_innovations()
-    if fit1 < fit2:
-        # swamp parent
-        swamp = parent1
-        parent1 = parent2
-        parent2 = swamp
-        
-    innov1 = parent1.get_innovations()
-    innov2 = parent2.get_innovations()
     
-    child = Structure(parent1._nodes[0:constrain_n], parent1._parameters)
-    child.init(parent1._nodes[constrain_n:])
-    child._trusses = np.copy(parent1._trusses)
+    inn1 = parent1.get_node_innovations()
+    inn2 = parent2.get_node_innovations()
+    kp1 = fit1/(fit1+fit2)
     
-    genome1 = upper_tri_masking(innov1)
-    genome2 = upper_tri_masking(innov2)
-    
-    k = max(genome1.shape[0], genome2.shape[0])
+    common = np.isin(inn1, inn2, assume_unique=True)
+    common_idx = np.nonzero(common)[0]
+    n1 = len(inn1)
+    n2 = len(inn2)
+    k = n1 + n2 - len(common_idx)
 
-    genome1.resize((k))
-    genome2.resize((k))
-
-    #print(genome1, genome2)
+    filter_p1 = np.full(k, False)
+    filter_p2 = np.full(k, False)
+    filter_p1[0:n1] = True
+    filter_p1 = np.nonzero(filter_p1)[0]
+    filter_p2[common_idx] = True
+    filter_p2[n1:k] = True
+    filter_p2 = np.nonzero(filter_p2)[0]
     
-    common_idx = np.nonzero(np.in1d(genome1, genome2))[0]
-    common = np.zeros(k, dtype=bool)
-    common[common_idx] = True
+    genome1 = np.zeros((k, k))
+    genome2 = np.zeros((k, k))
+    area1 = np.zeros((k, k))
+    area2 = np.zeros((k, k))
     
-    #print(common_idx)
+    fp1 = np.ix_(filter_p1, filter_p1)
+    fp2 = np.ix_(filter_p2, filter_p2)
+    genome1[fp1] = parent1._trusses[0]
+    genome2[fp2] = parent2._trusses[0]
+    area1[fp1] = parent1._trusses[1]
+    area2[fp2] = parent2._trusses[1]
     
-    for i in range(0, k):
-        if common[i]:
-            # Common connection, get state and area random parent trusses adj
-            p1_r, p1_c = np.argwhere(innov1 == genome1[i])[0]
-            p2_r, p2_c = np.argwhere(innov2 == genome1[i])[0]
-            state = random.choice([parent1._trusses[0, p1_r, p1_c], parent2._trusses[0, p2_r, p2_c]])
-            area = random.choice([parent1._trusses[1, p1_r, p1_c], parent2._trusses[1, p2_r, p2_c]])
-            
-            #print(p1_r, p1_c, state, [parent1._trusses[0, p1_r, p1_c], parent2._trusses[0, p2_r, p2_c]])
-            
-            #print(state, p1_r, p1_c, [parent1._trusses[0, p1_r, p1_c], parent2._trusses[0, p2_r, p2_c]])
-            child._trusses[0, p1_r, p1_c] = state
-            child._trusses[0, p1_c, p1_r] = state
-            child._trusses[1, p1_r, p1_c] = area
-            child._trusses[1, p1_c, p1_r] = area
+    ## TODO
+    # Add node random delete
+    # Add joint for substructure
     
-    return child
+    child_conn_filter = make_sym(np.random.choice([0,1], k*k, p=[kp1, 1-kp1]).reshape((k,k))) == 1
+    child_genome = np.copy(genome1)
+    child_area = np.copy(area1)
+    child_genome[child_conn_filter] = genome2[child_conn_filter]
+    child_area[child_conn_filter] = area2[child_conn_filter]
+    
+    # set child
+    c = Structure(parent1._nodes[0:constrain_n], parent1._parameters)
+    c.init(k-constrain_n)
+    child_nodes = c._nodes
+    child_nodes[filter_p1] = parent1._nodes
+    child_nodes[filter_p2] = parent2._nodes
+    c._nodes = child_nodes
+    c._trusses[0] = child_genome
+    c._trusses[1] = child_area
+    
+    c.healing()
+    
+    return c
     
 def get_distance(s1: Structure, s2: Structure, K_mass = 1, K_cm = 1, K_nodes = 1) -> float:
     mass_1 = np.sum(s1._trusses[6]*s1._parameters.material.density)
@@ -139,5 +144,7 @@ def connection_mutation(s: Structure, area) -> Structure:
     s._trusses[0, c, r] = new_state
     new_area = round(random.uniform(area[0], area[1]) * new_state, s._parameters.round_digit)
     s._trusses[0, c, r] = new_area
+    s._trusses[0, r, c] = new_area
+
 
     return s

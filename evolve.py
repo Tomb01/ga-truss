@@ -27,8 +27,8 @@ param.round_digit = 2
 area_range = [1.5,2]
 
 # evolution parameter
-EPOCH = 50
-POPULATION = 10
+EPOCH = 10
+POPULATION = 100
 START_NODE_RANGE = [0,10]
 ELITE_RATIO = 0.1
 MUTATION_RATIO = 0.1
@@ -112,7 +112,7 @@ for e in range(0, EPOCH):
         parent1 = sorted_population[p1]
         parent2 = sorted_population[p2]
         
-        c = crossover(parent1, parent2, len(problem), -adj_fitness[p1], -adj_fitness[p2])
+        c = crossover(parent1, parent2, len(problem), -fitness[p1], -fitness[p2])
         if np.random.choice([0,1], p=[1-MUTATION_RATIO, MUTATION_RATIO]) == 1 and fitness[p1]==fitness[p2]:
             #print("mutate")
             c = mutate(c, mutation_k, area_range)

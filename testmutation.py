@@ -21,11 +21,11 @@ trusses = np.zeros((7,n,n))
 #trusses[0] = make_sym(np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]]))
 #trusses[1] = trusses[0]  
 
-area = [0.1, 10]
-nodes_range = [0,1]
+area = [0.1, 1]
+nodes_range = [2,3]
 
 param = StructureParameters()
-param.corner = SpaceArea(-0.5,-0.5,1.5,1.5)
+param.corner = SpaceArea(-0.5,-0.5,3,3)
 param.crossover_radius = 0.5
 param.safety_factor_yield = 1
 param.safety_factor_buckling = 1.5
@@ -44,6 +44,7 @@ fit2 = p2.compute()
 
 c = crossover(p1, p2, len(problem), fit1, fit2)
 c.compute()
+print(c.healing())
 
 figure, axes = plt.subplots(1,3, )
 
@@ -54,6 +55,6 @@ plot_structure(p1, figure, axes[0], annotation=False)
 plot_structure(p2, figure, axes[1], annotation=False)
 plot_structure(c, figure, axes[2], annotation=False)
 
-print(fit1, p1.get_node_connection(), p1.is_broken())
+print(c.is_broken(), c._valid)
 
 show()

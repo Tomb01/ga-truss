@@ -33,6 +33,7 @@ def disp(k_disp, trusses) -> np.array:
     return k_disp - np.matmul(k_disp, trusses[0])*np.identity(trusses.shape[1])
 
 def make_sym(m: np.array) -> np.array:
+    m = np.triu(m)
     return m + m.T - np.diag(np.diag(m))
 
 def solve(nodes, trusses, elastic_modulus) -> np.array:

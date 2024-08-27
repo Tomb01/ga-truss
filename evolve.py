@@ -27,7 +27,7 @@ param.round_digit = 2
 area_range = [1.5,2]
 
 # evolution parameter
-EPOCH = 100
+EPOCH = 20
 POPULATION = 10
 START_NODE_RANGE = [0,20]
 ELITE_RATIO = 0.1

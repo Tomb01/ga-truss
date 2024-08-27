@@ -262,22 +262,23 @@ class Structure:
         if not self._valid:
             # invalid
             return 1
-
-        # Compute structural efficency matrix
-        n = len(self._nodes)
+        
+        # Compute allowed stress matrix
         diameter = np.power(4*self._trusses[1]/3.14, 1/2)
+        n = len(self._nodes)
+
         stress_cr = np.divide((3.14**2)*self._parameters.material.elastic_modulus*np.power(diameter/4,2), np.power(self._trusses[6],2)*self._parameters.safety_factor_buckling, out=np.zeros_like(self._trusses[1]), where = self._trusses[0] != 0)
         allowed_tensile_stress = self._parameters.material.yield_strenght/ self._parameters.safety_factor_yield
-        tensile_broken = np.logical_and(stress_cr >= allowed_tensile_stress, stress_cr<0)
-        stress_cr[tensile_broken] = allowed_tensile_stress
+        buckling = np.logical_or(stress_cr > allowed_tensile_stress, self._trusses[2]>0)
+        stress_cr[buckling] = allowed_tensile_stress
+
+        # Compute structural efficency matrix
         self._trusses[5] = np.divide(
             np.abs(self._trusses[3]),
             stress_cr,
             out=np.zeros((n, n)),
             where=self._trusses[0] != 0,
         )
-        
-        print(stress_cr)
         
         max_eff = np.max(self._trusses[5])
         if max_eff > 1:

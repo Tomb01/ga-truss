@@ -13,9 +13,13 @@ def connections(m: np.array, adj: np.array) -> np.array:
 def repeat(m: np.array) -> np.array:
     return np.swapaxes([m]*(m.shape[0]), 0, 2)
     
-def distance(nodes: np.array, trusses: np.array):
+def distance(nodes: np.array, trusses: np.array, conn = True):
     all_nodes = repeat(nodes)
-    return connections(np.swapaxes(all_nodes, 2, 1) - all_nodes , trusses)
+    x = np.swapaxes(all_nodes, 2, 1) - all_nodes 
+    if conn:
+        return connections(x, trusses)
+    else:
+        return x
 
 def lenght(distances: np.array) -> np.array:
     return (distances[0]**2+distances[1]**2)**(1/2)

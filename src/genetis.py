@@ -8,32 +8,42 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     inn1 = parent1.get_node_innovations()
     inn2 = parent2.get_node_innovations()
     kp1 = fit1/(fit1+fit2)
+    print(fit1, fit2)
     
-    common = np.isin(inn1, inn2, assume_unique=True)
+    common = np.isin(inn1, inn2)
     common_idx = np.nonzero(common)[0]
     n1 = len(inn1)
     n2 = len(inn2)
     k = n1 + n2 - len(common_idx)
 
-    filter_p1 = np.full(k, False)
-    filter_p2 = np.full(k, False)
-    filter_p1[0:n1] = True
-    filter_p1 = np.nonzero(filter_p1)[0]
-    filter_p2[common_idx] = True
-    filter_p2[n1:k] = True
-    filter_p2 = np.nonzero(filter_p2)[0]
-    
-    genome1 = np.zeros((k, k))
-    genome2 = np.zeros((k, k))
-    area1 = np.zeros((k, k))
-    area2 = np.zeros((k, k))
+    genome = np.empty(k, dtype=np.object_)
+    genome[0:n1] = inn1
+    filter_p1 = np.arange(n1)
+    filter_p2 = np.zeros(n2, dtype=np.int32)
+    j = n1
+    for i in range(0, n2):
+        gene = inn2[i]
+        idx = np.where(genome==gene)[0]
+        if len(idx)>0:
+            # common gene
+            filter_p2[i] = idx[0]
+        else:
+            # add to tail
+            filter_p2[i] = j
+            j = j+1
+            
+    _, idx, c = np.unique(filter_p2, return_inverse=True, return_counts=True)
+    if np.any(c>1):
+        raise ValueError("Multiple join")
     
     fp1 = np.ix_(filter_p1, filter_p1)
     fp2 = np.ix_(filter_p2, filter_p2)
+
+    genome1 = np.zeros((k, k))
+    genome2 = np.zeros((k, k))
+
     genome1[fp1] = parent1._trusses[0]
     genome2[fp2] = parent2._trusses[0]
-    area1[fp1] = parent1._trusses[1]
-    area2[fp2] = parent2._trusses[1]
     
     ## TODO
     # Add node random delete
@@ -41,19 +51,17 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     
     child_conn_filter = make_sym(np.random.choice([0,1], k*k, p=[kp1, 1-kp1]).reshape((k,k))) == 1
     child_genome = np.copy(genome1)
-    child_area = np.copy(area1)
     child_genome[child_conn_filter] = genome2[child_conn_filter]
-    child_area[child_conn_filter] = area2[child_conn_filter]
     
     # set child
     c = Structure(parent1._nodes[0:constrain_n], parent1._parameters)
     c.init(k-constrain_n)
     child_nodes = c._nodes
-    child_nodes[filter_p1] = parent1._nodes
     child_nodes[filter_p2] = parent2._nodes
+    child_nodes[filter_p1] = parent1._nodes
     c._nodes = child_nodes
     c._trusses[0] = child_genome
-    c._trusses[1] = child_area
+    c._trusses[1] = child_genome
     
     c.healing()
     

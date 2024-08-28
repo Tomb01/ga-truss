@@ -26,12 +26,14 @@ nodes_range = [2,3]
 
 param = StructureParameters()
 param.corner = SpaceArea(-0.5,-0.5,3,3)
-param.crossover_radius = 0.5
+param.crossover_radius = 0.2
 param.safety_factor_yield = 1
 param.safety_factor_buckling = 1.5
 param.material = MATERIAL_ALLUMINIUM
 param.node_mass_k = 1
-param.round_digit = 3
+param.round_digit = 2
+param.max_area = 1
+param.min_area = 1
 
 p1 = Structure(problem, param)
 p2 = Structure(problem, param)

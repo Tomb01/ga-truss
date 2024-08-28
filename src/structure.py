@@ -1,6 +1,6 @@
 import numpy as np
 from random import randrange, uniform
-from src.operations import solve, make_sym, FLOAT_MAX
+from src.operations import distance, lenght, solve, make_sym, FLOAT_MAX
 
 
 def Node(
@@ -74,7 +74,8 @@ class StructureParameters:
     crossover_radius: float
     round_digit: int
     corner: SpaceArea
-
+    max_area: float
+    min_area: float
 
 class Structure:
 
@@ -117,7 +118,7 @@ class Structure:
             self._nodes[i] = Node(x, y)
 
         # struttura al più stabile m = 2n
-        m = 2 * n
+        m = randrange(n, 2*n)
         d = np.sum(np.triu(np.ones(n))) - n
         if m < d:
             triu = np.concatenate([np.ones(m), np.zeros(int(d - m))])
@@ -136,7 +137,8 @@ class Structure:
         )
         self._trusses[1] = np.multiply(make_sym(np.triu(area_matrix)), self._trusses[0])
 
-        self.set_innovations()
+        #self.set_innovations()
+        self.healing()
 
     def check(self) -> bool:
         # Statically indeterminate if 2n < m
@@ -167,6 +169,29 @@ class Structure:
             #print(mobile_nodes)
             self.check()
             return True
+        
+    def aggregate_nodes(self) -> None:
+        dl = distance(self._nodes, self._trusses, False)
+        full_l = lenght(dl)
+        short_trusses = full_l<self._parameters.crossover_radius*1.41
+        np.fill_diagonal(short_trusses, False)
+        if np.any(short_trusses):
+            row, cols = np.where(short_trusses==True)
+            m = int(len(row)/2)
+            for j in range(0, m):
+                keep = row[j]
+                merge = cols[j]
+                print(keep, merge)
+                merge_connections = self._trusses[0,merge]
+                current_connections = self._trusses[0,keep]
+                merge_connections[keep] = 0
+                connections = np.logical_or(merge_connections, current_connections)
+                self._trusses[0, keep, :] = connections
+                self._trusses[0, : , keep] = connections
+                self._trusses[1, keep, :] = connections
+                self._trusses[1, : , keep] = connections
+        
+            self.remove_node(cols[0:m])
 
     def get_node_connection(self) -> int:
         return np.sum(self._trusses[0], axis=0)
@@ -222,80 +247,84 @@ class Structure:
                 )
             except Exception:
                 self._valid = False
-
-    def set_innovations(self):
-        n = len(self._nodes)
-        self._innovations = np.empty((n, n), dtype=np.object_)
-
-        for i in range(0, n):
-            # self._nodes[i,10] = encode_innovation(self._nodes[i,0], 0, self._nodes[i,1], 0)
-            for j in range(0, n):
-                if i != j:
-                    self._innovations[i, j] = encode_innovation(
-                        self._nodes[i, 0],
-                        self._nodes[j, 0],
-                        self._nodes[i, 1],
-                        self._nodes[j, 1],
-                        self._parameters.crossover_radius,
-                        self._parameters.round_digit,
-                    )
-                    self._innovations[j, i] = self._innovations[i, j]
-
-        # self._i[5] = make_sym(self._trusses[5])
-
-    def get_innovations(self) -> np.array:
-        return self._innovations
     
     def get_node_innovations(self) -> np.array:
         n = len(self._nodes)
         inn = np.empty(n, dtype=np.object_)
         crossover_radius = self._parameters.crossover_radius
-        round_digit = self._parameters.round_digit
         for i in range(0, n):
             x = self._nodes[i, 0]
             y = self._nodes[i, 1]
-            inn[i] = "{x_min:.6f}-{y_min:.6f}-{x_max:.6f}-{y_max:.6f}".format(x_max=round(x + crossover_radius, round_digit),x_min=round(x - crossover_radius, round_digit),y_max=round(y + crossover_radius, round_digit),y_min=round(y - crossover_radius, round_digit),)
+            x_min = x - x%crossover_radius
+            x_max = x_min+crossover_radius
+            y_min = y - y%crossover_radius
+            y_max = y_min+crossover_radius
+            inn[i] = "{:.6f}-{:.6f}-{:.6f}-{:.6f}".format(x_min, y_min, x_max, y_max)
         return inn
         
-    def calculate_fitness(self) -> float:
-
-        if not self._valid:
-            # invalid
-            return 1
-        
+    def autosize(self) -> None:
         # Compute allowed stress matrix
         diameter = np.power(4*self._trusses[1]/3.14, 1/2)
         n = len(self._nodes)
+        print(np.logical_and(self._trusses[6]==0, self._trusses[0]!=0))
 
         stress_cr = np.divide((3.14**2)*self._parameters.material.elastic_modulus*np.power(diameter/4,2), np.power(self._trusses[6],2)*self._parameters.safety_factor_buckling, out=np.zeros_like(self._trusses[1]), where = self._trusses[0] != 0)
         allowed_tensile_stress = self._parameters.material.yield_strenght/ self._parameters.safety_factor_yield
         buckling = np.logical_or(stress_cr > allowed_tensile_stress, self._trusses[2]>0)
         stress_cr[buckling] = allowed_tensile_stress
-
-        # Compute structural efficency matrix
+        
+        # Compute autosized areas
+        autoarea = np.divide(
+            np.abs(self._trusses[2]),
+            stress_cr,
+            out=np.zeros((n, n)),
+            where=self._trusses[0] != 0,
+        )
+        
+        autoarea[autoarea > self._parameters.max_area] = self._parameters.max_area
+        autoarea[autoarea < self._parameters.min_area] = self._parameters.min_area
+        
+        self._trusses[1] = autoarea
+        self._trusses[3] = np.divide(
+            self._trusses[2],
+            self._trusses[1],
+            out=np.zeros((n, n)),
+            where=self._trusses[0] != 0,
+        )
         self._trusses[5] = np.divide(
             np.abs(self._trusses[3]),
             stress_cr,
             out=np.zeros((n, n)),
             where=self._trusses[0] != 0,
         )
+           
+    def calculate_fitness(self) -> float:
+
+        if not self._valid:
+            # invalid
+            return 1
         
-        max_eff = np.max(self._trusses[5])
+        """max_eff = np.max(self._trusses[5])
         stress_eff = 0
         if max_eff > 1:
             # broken
             stress_eff = 10**(-max_eff)
         else:
             eff = np.mean(self._trusses[5], where=(self._trusses[0]!=0))
-            stress_eff = eff
+            stress_eff = eff"""
+        
+        eff = 1
+        if self.is_broken():
+            return 1 - 10**(-np.max(self._trusses[5]))
         
         mass = (np.sum(self._trusses[1]*self._trusses[6])+len(self._nodes)*self._parameters.node_mass_k)
-        return 1 - stress_eff/mass
+        return 1 - eff/mass
         
     def is_broken(self) -> bool:
         return np.max(self._trusses[5]) > 1
         
     def compute(self) -> np.array:
+        self.aggregate_nodes()
         self.solve()
-        self.set_innovations()
+        self.autosize()
         return self.calculate_fitness()

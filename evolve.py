@@ -11,28 +11,30 @@ import datetime
 # Problem parameter
 problem = [
     Node(0,0,True,True,0,0),
-    Node(1,2,False,False,1e4,0),
-    Node(1,0,True,True,0,0)
+    Node(2,0.1,False,False,0,1e3),
+    Node(4,0,True,True,0,0)
 ]
 
 param = StructureParameters()
-param.corner = SpaceArea(-2,0,4,4)
+param.corner = SpaceArea(0,0,4,4)
 param.crossover_radius = 0.2
 param.safety_factor_yield = 1
 param.safety_factor_buckling = 1.5
 param.material = MATERIAL_ALLUMINIUM
 param.node_mass_k = 1
 param.round_digit = 2
+param.max_area = 10
+param.min_area = 10
 
 area_range = [1.5,2]
 
 # evolution parameter
-EPOCH = 10
-POPULATION = 100
+EPOCH = 100
+POPULATION = 10
 START_NODE_RANGE = [0,20]
 ELITE_RATIO = 0.1
 MUTATION_RATIO = 0.2
-KILL_RATIO = 0.5
+KILL_RATIO = 0.
 NICHE_RADIUS = 0.01
 CROSSOVER_RADIUS = 0.1
 
@@ -150,7 +152,7 @@ figure, axis = plt.subplots(1,2)
 figure.set_figheight(5)
 figure.set_figwidth(15)
 axis[-1].plot(range(0, EPOCH), fitness_curve)
-plot_structure(sorted_population[0], figure, axis[0], annotation=False, area=area_range)
+plot_structure(sorted_population[0], figure, axis[0], annotation=False, area=[10,10])
 print(sorted_population[0].is_broken(), sorted_population[0].check())
 show()
         

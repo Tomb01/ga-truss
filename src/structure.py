@@ -38,7 +38,7 @@ def decode_innovations(innovation: str):
 
 
 TRUSS_DIMENSION = 7
-
+NODE_DIMENSION = 11
 
 class SpaceArea:
     min_x: float
@@ -93,22 +93,16 @@ class Structure:
         self._parameters = params
         self._reactions = np.sum(self._nodes[:, 4:6])
         self._valid = False
+        self._trusses = np.zeros((TRUSS_DIMENSION, self._n_constrain, self._n_constrain))
 
-    def init(self, nodes: np.array):
-        if isinstance(nodes, int):
-            nodes = np.zeros((nodes, 11))
-        self._nodes = np.vstack((self._nodes, nodes))
-        n = len(self._nodes)
+    def init(self, n):
+        self._nodes = np.zeros((n, NODE_DIMENSION))
         self._trusses = np.zeros((TRUSS_DIMENSION, n, n))
 
     def init_random(self, nodes_range, area_range):
-
-        if isinstance(nodes_range, int):
-            n = nodes_range
-        else:
-            n = randrange(nodes_range[0], nodes_range[1]) 
+        n = randrange(nodes_range[0], nodes_range[1]) 
         n = n + self._n_constrain
-        self._nodes.resize((n, self._nodes.shape[1]))
+        self._nodes.resize((n, self._nodes.shape[1]), refcheck=False)
 
         self._trusses = np.zeros((TRUSS_DIMENSION, n, n))
         allowed_space = self._parameters.corner
@@ -126,8 +120,6 @@ class Structure:
         else:
             triu = np.ones(int(d))
 
-        # print(n, m, d, len(triu))
-
         adj = np.zeros((n, n))
         adj[np.triu_indices(n, 1)] = triu
         self._trusses[0] = make_sym(adj)
@@ -136,15 +128,17 @@ class Structure:
             self._parameters.round_digit,
         )
         self._trusses[1] = np.multiply(make_sym(np.triu(area_matrix)), self._trusses[0])
+        #print(self._trusses[1])
 
         #self.set_innovations()
         self.healing()
+        self.aggregate_nodes()
 
     def check(self) -> bool:
         # Statically indeterminate if 2n < m
         free_nodes = (self._nodes[:,4]+self._nodes[:,5])==0
         edge_node = np.sum(self._trusses[0], axis=0)
-        if np.all(edge_node[free_nodes] > 1) and np.all(edge_node > 0):
+        if np.all(edge_node[free_nodes] > 1): # and np.all(edge_node > 0):
             if self.get_DOF() > 0:
                 self._valid = False
             else:
@@ -178,20 +172,33 @@ class Structure:
         if np.any(short_trusses):
             row, cols = np.where(short_trusses==True)
             m = int(len(row)/2)
+            #print(m)
+            if len(self._nodes) - m < self._n_constrain:
+                raise ValueError("invalid crossover radius")
             for j in range(0, m):
+                if cols[j] < self._n_constrain:
+                    continue
                 keep = row[j]
                 merge = cols[j]
-                print(keep, merge)
+                #print(keep, merge)  
                 merge_connections = self._trusses[0,merge]
                 current_connections = self._trusses[0,keep]
-                merge_connections[keep] = 0
                 connections = np.logical_or(merge_connections, current_connections)
+                connections[keep] = 0
                 self._trusses[0, keep, :] = connections
                 self._trusses[0, : , keep] = connections
-                self._trusses[1, keep, :] = connections
-                self._trusses[1, : , keep] = connections
+                
+                area_merge = self._trusses[1,merge]
+                area_keep = self._trusses[1,keep]
+                area = np.maximum(area_merge, area_keep)
+                area[keep] = 0
+                self._trusses[1, keep, :] = area
+                self._trusses[1, : , keep] = area
         
-            self.remove_node(cols[0:m])
+            #print(self._trusses[0])
+            to_remove = (cols > self._n_constrain)[0:m]
+            remove_index = cols[0:m]
+            self.remove_node(remove_index[to_remove])
 
     def get_node_connection(self) -> int:
         return np.sum(self._trusses[0], axis=0)
@@ -220,18 +227,17 @@ class Structure:
         new_adj[0, :, n - 1] = np.concatenate([conn, [0]])
         new_adj[1, :, n - 1] = np.concatenate([areas, [0]])
 
-        new_adj[0] = make_sym(np.triu(new_adj[0]))
-        new_adj[1] = make_sym(np.triu(new_adj[1]))
+        new_adj[0] = make_sym(new_adj[0])
+        new_adj[1] = make_sym(new_adj[1])
 
         # print(new_adj[0], new_adj[1])
         self._trusses = new_adj
 
-    def remove_node(self, index):
-        if isinstance(index, int):
-            if index < self._n_constrain:
-                raise Exception("Unable to remove contrain nodes")
-            index = (index)
-        
+    def remove_node(self, index: np.array):
+        if np.any(index < self._n_constrain):
+            raise Exception("Unable to remove contrain nodes")
+        index = tuple(index.tolist())
+        #print(index)
         self._nodes = np.delete(self._nodes, index, axis=0)
         self._trusses = np.delete(self._trusses, index, axis=1)
         self._trusses = np.delete(self._trusses, index, axis=2)
@@ -240,7 +246,7 @@ class Structure:
         self.check()
         if self._valid:
             try:
-                solve(
+                nodes, truss = solve(
                     self._nodes,
                     self._trusses,
                     self._parameters.material.elastic_modulus,
@@ -261,17 +267,33 @@ class Structure:
             y_max = y_min+crossover_radius
             inn[i] = "{:.6f}-{:.6f}-{:.6f}-{:.6f}".format(x_min, y_min, x_max, y_max)
         return inn
-        
-    def autosize(self) -> None:
+    
+    def compute_stress_matrix(self) -> np.array:
+        if not self._valid:
+            return self._trusses[0]
         # Compute allowed stress matrix
         diameter = np.power(4*self._trusses[1]/3.14, 1/2)
         n = len(self._nodes)
-        print(np.logical_and(self._trusses[6]==0, self._trusses[0]!=0))
+        if np.any(np.logical_and(self._trusses[6]==0, self._trusses[0]!=0)):
+            print(self._trusses[0])
+            raise ValueError("Invalid matrix 6")
 
         stress_cr = np.divide((3.14**2)*self._parameters.material.elastic_modulus*np.power(diameter/4,2), np.power(self._trusses[6],2)*self._parameters.safety_factor_buckling, out=np.zeros_like(self._trusses[1]), where = self._trusses[0] != 0)
         allowed_tensile_stress = self._parameters.material.yield_strenght/ self._parameters.safety_factor_yield
         buckling = np.logical_or(stress_cr > allowed_tensile_stress, self._trusses[2]>0)
         stress_cr[buckling] = allowed_tensile_stress
+        
+        self._trusses[5] = np.divide(
+            np.abs(self._trusses[3]),
+            stress_cr,
+            out=np.zeros((n, n)),
+            where=self._trusses[0] != 0,
+        )
+        
+        return self._trusses[5]
+        
+    def autosize(self) -> None:
+        raise DeprecationWarning
         
         # Compute autosized areas
         autoarea = np.divide(
@@ -291,12 +313,7 @@ class Structure:
             out=np.zeros((n, n)),
             where=self._trusses[0] != 0,
         )
-        self._trusses[5] = np.divide(
-            np.abs(self._trusses[3]),
-            stress_cr,
-            out=np.zeros((n, n)),
-            where=self._trusses[0] != 0,
-        )
+
            
     def calculate_fitness(self) -> float:
 
@@ -304,21 +321,17 @@ class Structure:
             # invalid
             return 1
         
-        """max_eff = np.max(self._trusses[5])
+        worst_eff = np.max(self._trusses[5])
         stress_eff = 0
-        if max_eff > 1:
+        if worst_eff > 1:
             # broken
-            stress_eff = 10**(-max_eff)
+            stress_eff = 10**(-worst_eff)
         else:
             eff = np.mean(self._trusses[5], where=(self._trusses[0]!=0))
-            stress_eff = eff"""
-        
-        eff = 1
-        if self.is_broken():
-            return 1 - 10**(-np.max(self._trusses[5]))
+            stress_eff = eff
         
         mass = (np.sum(self._trusses[1]*self._trusses[6])+len(self._nodes)*self._parameters.node_mass_k)
-        return 1 - eff/mass
+        return 1 - stress_eff/(0.1*mass)
         
     def is_broken(self) -> bool:
         return np.max(self._trusses[5]) > 1
@@ -326,5 +339,5 @@ class Structure:
     def compute(self) -> np.array:
         self.aggregate_nodes()
         self.solve()
-        self.autosize()
+        self.compute_stress_matrix()
         return self.calculate_fitness()

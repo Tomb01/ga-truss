@@ -11,7 +11,7 @@ import datetime
 # Problem parameter
 problem = [
     Node(0,0,True,True,0,0),
-    Node(2,0.1,False,False,0,1e3),
+    Node(2,0.1,False,False,0,1e5),
     Node(4,0,True,True,0,0)
 ]
 
@@ -30,17 +30,17 @@ area_range = [1.5,2]
 
 # evolution parameter
 EPOCH = 100
-POPULATION = 10
+POPULATION = 100
 START_NODE_RANGE = [0,20]
 ELITE_RATIO = 0.1
-MUTATION_RATIO = 0.2
-KILL_RATIO = 0.
+MUTATION_RATIO = 0.3
+KILL_RATIO = 0.2
 NICHE_RADIUS = 0.01
 CROSSOVER_RADIUS = 0.1
 
 # Mutation
 MUTATION_NODE_POSITION = 2
-MUTATION_AREA = 0
+MUTATION_AREA = 1
 MUTATION_CONNECTION = 1
 MUTATION_NODE_DELETE = 2
 MUTATION_NODE_INSERT = 1
@@ -75,6 +75,9 @@ for i in range(0, POPULATION):
     #n = i%START_NODE_RANGE[1]
     s.init_random(nodes_range=START_NODE_RANGE, area_range=area_range)
     new_population[i] = s
+    fitness[i] = new_population[i].compute()
+    
+print("------------ START ------------")
     
 # Evolution
 for e in range(0, EPOCH):
@@ -110,9 +113,11 @@ for e in range(0, EPOCH):
         parent2 = sorted_population[p2]
         
         c = crossover(parent1, parent2, len(problem), -fitness[p1], -fitness[p2])
-        if np.random.choice([0,1], p=[1-MUTATION_RATIO, MUTATION_RATIO]) == 1 and fitness[p1]==fitness[p2]:
+        #print(c._trusses[0])
+        if np.random.choice([0,1], p=[1-MUTATION_RATIO, MUTATION_RATIO]) == 1 or fitness[p1]==fitness[p2]:
             #print("mutate")
             c = mutate(c, mutation_k, area_range)
+  
         child_fitness = c.compute()
         family_fitness = np.array([fitness[p1], fitness[p2], child_fitness])
         family = np.array([parent1, parent2, c])
@@ -136,7 +141,7 @@ for e in range(0, EPOCH):
             best[b_count] = sorted_population[0]
             b_count = b_count+1"""
     
-    print(e, "---", sorted_population[0].compute())
+    print(e, "---", sorted_population[0].compute(), fitness_curve[e]==fitness_curve[e-1])
     """if e==EPOCH-1: 
         figure1, axis1 = plt.subplots(1,POPULATION)
         for j in range(0, POPULATION):

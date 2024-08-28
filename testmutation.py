@@ -53,9 +53,9 @@ figure, axes = plt.subplots(1,3, )
 figure.set_figheight(5)
 figure.set_figwidth(15)
 
-plot_structure(p1, figure, axes[0], annotation=False)
-plot_structure(p2, figure, axes[1], annotation=False)
-plot_structure(c, figure, axes[2], annotation=False)
+plot_structure(p1, figure, axes[0], annotation=False, area=area)
+plot_structure(p2, figure, axes[1], annotation=False, area=area)
+plot_structure(c, figure, axes[2], annotation=False, area=area)
 
 print(c.is_broken(), c._valid)
 

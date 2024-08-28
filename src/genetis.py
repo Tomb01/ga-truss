@@ -1,4 +1,4 @@
-from src.structure import Structure
+from src.structure import Structure, NODE_DIMENSION
 import numpy as np
 from src.operations import upper_tri_masking, make_sym
 import random
@@ -8,7 +8,6 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     inn1 = parent1.get_node_innovations()
     inn2 = parent2.get_node_innovations()
     kp1 = fit1/(fit1+fit2)
-    print(fit1, fit2)
     
     common = np.isin(inn1, inn2)
     common_idx = np.nonzero(common)[0]
@@ -49,19 +48,31 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     # Add node random delete
     # Add joint for substructure
     
+    #print(kp1)
     child_conn_filter = make_sym(np.random.choice([0,1], k*k, p=[kp1, 1-kp1]).reshape((k,k))) == 1
+    #child_conn_filter = np.logical_or(genome1, genome2)
     child_genome = np.copy(genome1)
     child_genome[child_conn_filter] = genome2[child_conn_filter]
+    np.fill_diagonal(child_genome, 0)
     
     # set child
     c = Structure(parent1._nodes[0:constrain_n], parent1._parameters)
-    c.init(k-constrain_n)
+    c.init(k)
     child_nodes = c._nodes
     child_nodes[filter_p2] = parent2._nodes
     child_nodes[filter_p1] = parent1._nodes
     c._nodes = child_nodes
     c._trusses[0] = child_genome
-    c._trusses[1] = child_genome
+    
+    # Ser areas
+    area1 = np.zeros((k, k))
+    area2 = np.zeros((k, k))
+    area1[fp1] = parent1._trusses[1]
+    area2[fp2] = parent2._trusses[1]
+    child_area = np.copy(area1)
+    child_area[child_conn_filter] = area2[child_conn_filter]
+    np.fill_diagonal(child_area, 0)
+    c._trusses[1] = child_area
     
     c.healing()
     
@@ -112,7 +123,7 @@ def add_node_mutation(s: Structure, area) -> Structure:
 def remove_node_mutation(s: Structure) -> Structure:
     if s._n_constrain < len(s._nodes):
         idx = random.choice(range(s._n_constrain, len(s._nodes)))
-        s.remove_node(idx)
+        s.remove_node(np.array([idx]))
     return s
 
 def area_mutation(s: Structure, area) -> Structure:

@@ -112,7 +112,7 @@ class Structure:
             self._nodes[i] = Node(x, y)
 
         # struttura al più stabile m = 2n
-        m = randrange(n, 2*n)
+        m = 2*n #randrange(n, 2*n)
         d = np.sum(np.triu(np.ones(n))) - n
         if m < d:
             triu = np.concatenate([np.ones(m), np.zeros(int(d - m))])
@@ -157,10 +157,7 @@ class Structure:
             return False
         else:
             # delete disjoint nodes
-            #print(np.nonzero(disjoint_nodes)[0])
             self.remove_node(np.nonzero(disjoint_nodes)[0])
-            #mobile_nodes = edge_node == 1
-            #print(mobile_nodes)
             self.check()
             return True
         
@@ -176,10 +173,10 @@ class Structure:
             if len(self._nodes) - m < self._n_constrain:
                 raise ValueError("invalid crossover radius")
             for j in range(0, m):
-                if cols[j] < self._n_constrain:
-                    continue
                 keep = row[j]
                 merge = cols[j]
+                if merge < self._n_constrain:
+                    merge, keep = keep, merge
                 #print(keep, merge)  
                 merge_connections = self._trusses[0,merge]
                 current_connections = self._trusses[0,keep]

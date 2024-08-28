@@ -11,7 +11,7 @@ import datetime
 # Problem parameter
 problem = [
     Node(0,0,True,True,0,0),
-    Node(2,0.1,False,False,0,1e5),
+    Node(2,0.1,False,False,0,2e3),
     Node(4,0,True,True,0,0)
 ]
 
@@ -33,7 +33,7 @@ EPOCH = 100
 POPULATION = 100
 START_NODE_RANGE = [0,20]
 ELITE_RATIO = 0.1
-MUTATION_RATIO = 0.3
+MUTATION_RATIO = 0.1
 KILL_RATIO = 0.2
 NICHE_RADIUS = 0.01
 CROSSOVER_RADIUS = 0.1
@@ -107,14 +107,17 @@ for e in range(0, EPOCH):
     #print(fitness)
     
     while i < POPULATION-elite_count-kill_count:
-        p1 = binary_turnament(-adj_fitness)
-        p2 = binary_turnament(-adj_fitness)
+        p1 = binary_turnament(-fitness)
+        p2 = binary_turnament(-fitness)
         parent1 = sorted_population[p1]
         parent2 = sorted_population[p2]
         
+        #if fitness[p1]==fitness[p2]:
+            #continue
+        
         c = crossover(parent1, parent2, len(problem), -fitness[p1], -fitness[p2])
         #print(c._trusses[0])
-        if np.random.choice([0,1], p=[1-MUTATION_RATIO, MUTATION_RATIO]) == 1 or fitness[p1]==fitness[p2]:
+        if np.random.choice([0,1], p=[1-MUTATION_RATIO, MUTATION_RATIO]) == 1 or fitness[p1] == fitness[p2]:
             #print("mutate")
             c = mutate(c, mutation_k, area_range)
   
@@ -157,7 +160,7 @@ figure, axis = plt.subplots(1,2)
 figure.set_figheight(5)
 figure.set_figwidth(15)
 axis[-1].plot(range(0, EPOCH), fitness_curve)
-plot_structure(sorted_population[0], figure, axis[0], annotation=False, area=[10,10])
+plot_structure(sorted_population[0], figure, axis[0], annotation=False, area=area_range)
 print(sorted_population[0].is_broken(), sorted_population[0].check())
 show()
         

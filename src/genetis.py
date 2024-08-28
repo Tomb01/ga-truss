@@ -7,22 +7,17 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     
     inn1 = parent1.get_node_innovations()
     inn2 = parent2.get_node_innovations()
-    kp1 = fit1/(fit1+fit2)
-    
-    common = np.isin(inn1, inn2)
-    common_idx = np.nonzero(common)[0]
+    #kp1 = fit1/(fit1+fit2)
+    kp1 = 0.5
+
     n1 = len(inn1)
     n2 = len(inn2)
-    k = n1 + n2 - len(common_idx)
-
-    genome = np.empty(k, dtype=np.object_)
-    genome[0:n1] = inn1
+    
     filter_p1 = np.arange(n1)
     filter_p2 = np.zeros(n2, dtype=np.int32)
-    j = n1
+    j = n1 
     for i in range(0, n2):
-        gene = inn2[i]
-        idx = np.where(genome==gene)[0]
+        idx = np.where(inn1==inn2[i])[0]
         if len(idx)>0:
             # common gene
             filter_p2[i] = idx[0]
@@ -30,10 +25,13 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
             # add to tail
             filter_p2[i] = j
             j = j+1
+    
+    k = j
             
     _, idx, c = np.unique(filter_p2, return_inverse=True, return_counts=True)
     if np.any(c>1):
-        raise ValueError("Multiple join")
+        #raise ValueError("Multiple join")
+        print("Multiple join")
     
     fp1 = np.ix_(filter_p1, filter_p1)
     fp2 = np.ix_(filter_p2, filter_p2)
@@ -74,8 +72,9 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     np.fill_diagonal(child_area, 0)
     c._trusses[1] = child_area
     
+    c.aggregate_nodes()
     c.healing()
-    
+
     return c
     
 def get_distance(s1: Structure, s2: Structure, K_mass = 1, K_cm = 1, K_nodes = 1) -> float:

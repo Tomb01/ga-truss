@@ -18,30 +18,34 @@ class EvolutionParameter:
     mutation_node_delete: float
     mutation_node_insert: float
     mutation_connection: float
-    enable_adj_fitness: bool
+    sort_adj_fitness: bool
+    dynamic_area: bool
 
     
-def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParameters, sample_point: int = 4, database_file = None, constrained_connections: np.array = None) -> Tuple[np.array, Structure, np.array]:
-
-    # Override evolu parameters
-    area_range = [sparam.min_area, sparam.max_area]
-
-    # Check mutation parameter
-    mutation_k = np.array([eparam.mutation_node_position, eparam.mutation_area, eparam.mutation_connection, eparam.mutation_node_delete, eparam.mutation_node_insert], dtype=np.float64)
-    mutation_k_tot = np.sum(mutation_k)
-    if mutation_k_tot>1:
-        warnings.warn("Mutation percentage sum exceed 1. Automatic fixing will be executed")
-        mutation_k = np.divide(mutation_k, mutation_k_tot, out=np.zeros_like(mutation_k), where=(mutation_k!=0))
+def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParameters, sample_point: int = 4, database_file = None, constrained_connections: np.array = None) -> Tuple[np.array, Structure, np.array, np.array]:
 
     # Init flag and constants
-    FLAG_ADJ_FITNESS = False if eparam.enable_adj_fitness == None else eparam.enable_adj_fitness
+    area_range = [sparam.min_area, sparam.max_area]
+    FLAG_ADJ_FITNESS = False if eparam.sort_adj_fitness == None else eparam.sort_adj_fitness
     FLAG_DATABASE = False if database_file == None else database_file
     POPULATION = eparam.population
     EPOCH = eparam.epochs
     FLAG_FIXED_CONNECTIONS = False
     if constrained_connections != None:
         warnings.warn("Fix connections activated. Only area optimization will be performed")
+        eparam.mutation_connection = 0
+        eparam.mutation_node_delete = 0
+        eparam.mutation_node_insert = 0
+        eparam.mutation_node_position = 0
+        eparam.mutation_area = 1
         FLAG_FIXED_CONNECTIONS = True
+        
+    # Check mutation parameter
+    mutation_k = np.array([eparam.mutation_node_position, eparam.mutation_area, eparam.mutation_connection, eparam.mutation_node_delete, eparam.mutation_node_insert], dtype=np.float64)
+    mutation_k_tot = np.sum(mutation_k)
+    if mutation_k_tot>1:
+        warnings.warn("Mutation percentage sum exceed 1. Automatic fixing will be executed")
+        mutation_k = np.divide(mutation_k, mutation_k_tot, out=np.zeros_like(mutation_k), where=(mutation_k!=0))
 
     # Init population array
     current_population = np.empty(POPULATION, dtype=np.object_)
@@ -53,6 +57,13 @@ def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParam
     # Init database
     if FLAG_DATABASE:
         db = Database(eparam.database_file)
+        
+    # Init broken check:
+    FLAG_DYNAMIC_AREA = False
+    if eparam.dynamic_area > 0:
+        FLAG_DYNAMIC_AREA = True
+        broken_status = np.zeros((POPULATION), dtype=float)
+        dynamic_count = 0
 
     # Init variable for fitness saving and sample
     out_max_fitness = np.zeros(EPOCH)
@@ -90,6 +101,8 @@ def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParam
                 adj_fitness[i] = current_fitness*2**(niche_population)
             if FLAG_DATABASE:
                 db.save_structure(e+1, current_population[i])
+            if FLAG_DYNAMIC_AREA:
+                broken_status[i] = current_population[i].is_broken()
             
         # Sort by fitness variables
         if FLAG_ADJ_FITNESS:
@@ -99,7 +112,20 @@ def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParam
         current_population = current_population[sorted_idx]
         fitness = fitness[sorted_idx]
         adj_fitness = adj_fitness[sorted_idx]
-    
+        
+        # Dynamic area
+        if FLAG_DYNAMIC_AREA:
+            dynamic_count += 1
+            non_broken =  POPULATION-np.count_nonzero(broken_status)
+            if non_broken/POPULATION > eparam.dynamic_area:
+                new_area_min = round(area_range[0]/2, sparam.round_digit)
+                if new_area_min > 0:
+                    area_range = [new_area_min, round(area_range[1]/2, sparam.round_digit)]
+                    dynamic_count = 0
+            elif non_broken == 0 and dynamic_count > 10:
+                area_range = np.round([area_range[0], area_range[1]*2], sparam.round_digit)
+                dynamic_count = 0
+                    
         # Crossover
         i = 0
         while i < crossover_count:
@@ -112,6 +138,9 @@ def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParam
             if np.random.choice([0,1], p=[1-eparam.total_mutation_ratio, eparam.total_mutation_ratio]) == 1 or fitness[p1] == fitness[p2]:
                 c = mutate(c, mutation_k, area_range)
     
+            if FLAG_FIXED_CONNECTIONS:
+                c.constrain_connections(constrained_connections)
+                
             child_fitness = c.compute()
             family_fitness = np.array([fitness[p1], fitness[p2], child_fitness])
             family = np.array([parent1, parent2, c])
@@ -123,6 +152,8 @@ def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParam
         # Kill and replace with fresh structures
         while i < POPULATION-elite_count:
             s = Structure(problem, sparam)
+            if FLAG_FIXED_CONNECTIONS:
+                s.constrain_connections(constrained_connections)
             s.init_random(nodes_range=eparam.node_range, area_range=area_range)
             new_population[i] = s
             i = i+1
@@ -141,7 +172,7 @@ def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParam
                 out_sample[sample_index] = current_population[0]
                 sample_index+=1
         
-    return out_max_fitness, current_population [0], out_sample, 
+    return out_max_fitness, current_population [0], out_sample, area_range
         
         
         

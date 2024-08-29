@@ -1,41 +1,12 @@
 import numpy as np
 from random import randrange, uniform
 from src.operations import distance, lenght, solve, make_sym, FLOAT_MAX
-import warnings
+from typing import Tuple
 
 def Node(
     x: float, y: float, vx: bool = False, vy: bool = False, Px: float = 0, Pz: float = 0
 ):
     return np.array([x, y, 0, 0, int(vx), int(vy), 0, 0, Px, Pz, 0], np.float64)
-
-
-def encode_innovation(x1, x2, y1, y2, crossover_radius, round_digit) -> int:
-    return "{x1_max:.6f}-{x1_min:.6f}-{y1_max:.6f}-{y1_min:.6f}-{x2_max:.6f}-{x2_min:.6f}-{y2_max:.6f}-{y2_min:.6f}".format(
-        x1_max=round(x1 + crossover_radius, round_digit),
-        x1_min=round(x1 - crossover_radius, round_digit),
-        x2_max=round(x2 + crossover_radius, round_digit),
-        x2_min=round(x2 - crossover_radius, round_digit),
-        y1_max=round(y1 + crossover_radius, round_digit),
-        y1_min=round(y1 - crossover_radius, round_digit),
-        y2_max=round(y2 + crossover_radius, round_digit),
-        y2_min=round(y2 - crossover_radius, round_digit),
-    )
-    # bytestring = str.encode('utf-8')
-    # return int.from_bytes(bytestring, 'big')
-
-
-def decode_innovations(innovation: str):
-    # bytestring = innovation.to_bytes((innovation.bit_length() + 7) // 8, 'big')
-    # str = bytestring.decode('utf-8')
-    comp = innovation.split("-")
-    return [
-        float(comp[0]),
-        float(comp[1]),
-        float(comp[2]),
-        float(comp[3]),
-        float(comp[4]),
-    ]
-
 
 TRUSS_DIMENSION = 7
 NODE_DIMENSION = 11
@@ -99,6 +70,8 @@ class Structure:
         self._trusses = np.zeros((TRUSS_DIMENSION, n, n))
         
     def constrain_connections(self, connections = np.array) -> None:
+        if len(connections) != len(self._nodes):
+            raise ValueError("connection constrained matrix wrong dimension")
         self._trusses[0] = connections
         self._trusses[1] = connections*self._trusses[1]
         self._fixed_connections = True
@@ -115,7 +88,6 @@ class Structure:
         n = n + self._n_constrain
         self._nodes.resize((n, self._nodes.shape[1]), refcheck=False)
 
-        self._trusses = np.zeros((TRUSS_DIMENSION, n, n))
         allowed_space = self._parameters.corner
         
         if n!=self._n_constrain:
@@ -126,6 +98,7 @@ class Structure:
                 self._nodes[i] = Node(x, y)
                 
         if not self._fixed_connections:
+            self._trusses = np.zeros((TRUSS_DIMENSION, n, n))
             # struttura al più stabile m = 2n
             m = 2*n
             d = np.sum(np.triu(np.ones(n))) - n
@@ -138,15 +111,26 @@ class Structure:
             adj = np.zeros((n, n))
             adj[np.triu_indices(n, 1)] = triu
             self._trusses[0] = make_sym(adj)
+            
+        rng = np.random.default_rng()
+        random_sample = rng.exponential(scale=4, size=(n,n))
         
-        area_matrix = np.round(
-            np.random.uniform(area_range[0], area_range[1], size=(n, n)),
-            self._parameters.round_digit,
-        )
+        b = area_range[1]
+        a = area_range[0]
+        area_matrix = (b - a) * random_sample + a
+        
+        #area_matrix = np.round(
+           # np.random.uniform(area_range[0], area_range[1], size=(n, n)),
+            #self._parameters.round_digit,
+        #)
         self._trusses[1] = np.multiply(make_sym(np.triu(area_matrix)), self._trusses[0])
         
+        self.check_connections_dimension()
         self.healing()
         self.aggregate_nodes()
+        
+        self._parameters.min_area = area_range[0]
+        self._parameters.max_area = area_range[1]
 
     def check(self) -> bool:
         # Statically indeterminate if 2n < m
@@ -274,28 +258,43 @@ class Structure:
         for i in range(0, n):
             x = self._nodes[i, 0]
             y = self._nodes[i, 1]
-            x_min = x - x%crossover_radius
-            x_max = x_min+crossover_radius
-            y_min = y - y%crossover_radius
-            y_max = y_min+crossover_radius
+            if crossover_radius != 0:
+                x_min = x - x%crossover_radius
+                x_max = x_min+crossover_radius
+                y_min = y - y%crossover_radius
+                y_max = y_min+crossover_radius
+            else:
+                x_min = x
+                x_max = x
+                y_min = y
+                y_max = y
             inn[i] = "{:.6f}-{:.6f}-{:.6f}-{:.6f}".format(x_min, y_min, x_max, y_max)
         return inn
+    
+    def check_connections_dimension(self,raise_error = False):
+        r = np.any(np.logical_and(np.logical_or(self._trusses[6]==0,self._trusses[1]==0), self._trusses[0]!=0))
+        if r and raise_error:
+            raise ValueError("Null area or lenght in some connections")
+        else:
+            return r
     
     def compute_stress_matrix(self) -> np.array:
         if not self._valid:
             return self._trusses[0]
-        # Compute allowed stress matrix
-        diameter = np.power(4*self._trusses[1]/3.14, 1/2)
-        n = len(self._nodes)
-        if np.any(np.logical_and(self._trusses[6]==0, self._trusses[0]!=0)):
-            print(self._trusses[0])
-            raise ValueError("Invalid matrix 6")
-
-        stress_cr = np.divide((3.14**2)*self._parameters.material.elastic_modulus*np.power(diameter/4,2), np.power(self._trusses[6],2)*self._parameters.safety_factor_buckling, out=np.zeros_like(self._trusses[1]), where = self._trusses[0] != 0)
-        allowed_tensile_stress = self._parameters.material.yield_strenght/ self._parameters.safety_factor_yield
-        buckling = np.logical_or(stress_cr > allowed_tensile_stress, self._trusses[2]>0)
-        stress_cr[buckling] = allowed_tensile_stress
         
+        self.check_connections_dimension()
+        # Compute allowed stress matrix
+        n = len(self._nodes)
+        allowed_tensile_stress = self._parameters.material.yield_strenght/ self._parameters.safety_factor_yield
+        if self._parameters.safety_factor_buckling > 1:
+            diameter = np.power(4*self._trusses[1]/3.14, 1/2)
+            stress_cr = np.divide((3.14**2)*self._parameters.material.elastic_modulus*np.power(diameter/4,2), np.power(self._trusses[6],2)*self._parameters.safety_factor_buckling, out=np.zeros_like(self._trusses[1]), where = self._trusses[0] != 0)
+            buckling = np.logical_or(stress_cr > allowed_tensile_stress, self._trusses[2]>0)
+            stress_cr[buckling] = allowed_tensile_stress
+        else:
+            stress_cr = np.full((n, n), allowed_tensile_stress)
+            stress_cr = stress_cr*self._trusses[0]
+
         self._trusses[5] = np.divide(
             np.abs(self._trusses[3]),
             stress_cr,
@@ -319,15 +318,29 @@ class Structure:
         else:
             eff = np.mean(np.power(self._trusses[5], 2), where=(self._trusses[0]!=0))
             stress_eff = eff
-        
-        mass = (np.sum(self._trusses[1]*self._trusses[6])+len(self._nodes)*self._parameters.node_mass_k)
-        return 1 - stress_eff/(0.1*mass)
+        _, mass = self.get_mass(include_density=False)
+        return 1 - stress_eff/mass
         
     def is_broken(self) -> bool:
         if np.any(self._trusses[5]) > 0:
             return np.max(self._trusses[5]) > 1
-        else:
+        elif self._valid:
             raise ValueError("Efficency matrix not computed. Run compute method on this structure")
+        
+    def get_max_stess(self) -> Tuple[float, float]:
+        return float(abs(np.max(self._trusses[3]))), float(abs(np.max(self._trusses[2])))
+    
+    def get_mass(self, include_density = True) -> Tuple[float, float]:
+        truss_volume = np.sum(self._trusses[1]*self._trusses[6])
+        node_volume = len(self._nodes)*self._parameters.node_mass_k
+        if include_density:
+            density = self._parameters.material.density
+        else:
+            density = 1
+        return float(truss_volume*density), float((truss_volume+node_volume)*density)
+    
+    def get_max_dispacement(self) -> float:
+        return float(np.max(self._nodes[:,2:3]))
         
     def compute(self) -> np.array:
         self.aggregate_nodes()

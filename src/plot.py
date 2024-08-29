@@ -39,11 +39,10 @@ def plot_structure(
     if axes == None:
         axes = plt.gca()
 
-    #axes.grid()
-    area_range = structure._parameters.max_area
-    k_area = 2
+    areas = trusses[1]
+    area_range = np.max(areas) - np.min(areas[np.nonzero(areas)])
     adj = np.triu(trusses[0])
-    area_ratio = np.triu(np.divide(trusses[1], area_range, out=np.zeros_like(trusses[1]), where=(trusses[1]!=0)))
+    area_ratio = np.triu(np.divide(areas, area_range, out=np.zeros_like(trusses[1]), where=(trusses[1]!=0)))
     n = len(nodes)
 
     space = structure._parameters.corner
@@ -61,12 +60,13 @@ def plot_structure(
                 e_x = nodes[j, 0]
                 s_y = nodes[i, 1]
                 e_y = nodes[j, 1]
-                axes.plot([s_x, e_x], [s_y, e_y], color=color, linewidth = area_ratio[i,j]*k_area)
+                line = (5 - 1) * area_ratio[i,j] + 1
+                axes.plot([s_x, e_x], [s_y, e_y], color=color, linewidth = line)
                 if e_x == s_x:
                     angle = 90
                 else:
                     angle = degrees(atan2((e_y - s_y), (e_x - s_x)))
-                if annotation and False:
+                if annotation:
                     axes.text(
                         (s_x + e_x) / 2,
                         (s_y + e_y) / 2,

@@ -77,24 +77,6 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
 
     return c
     
-def get_distance(s1: Structure, s2: Structure, K_mass = 1, K_cm = 1, K_nodes = 1) -> float:
-    mass_1 = np.sum(s1._trusses[6]*s1._parameters.material.density)
-    mass_2 = np.sum(s2._trusses[6]*s2._parameters.material.density)
-    
-    #print(mass_2-mass_1)
-    return abs(K_mass*(mass_2-mass_1) + K_nodes*(len(s2._nodes) - len(s2._nodes)))
-
-def sharing(population, index: int, threshold: float) -> int:
-    s = population[index]
-    sharing = 0
-    for i in range(0, len(population)):
-        if index != i:
-            distance = abs(s - population[i]) #get_distance(s, population[i])
-            if distance < threshold:
-                sharing = sharing + 1
-
-    return sharing
-    
 def mutate(s: Structure, mutation_k, area) -> Structure:
     
     mutation_type = np.random.choice([1, 2, 3, 4, 5], p=mutation_k)

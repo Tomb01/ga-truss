@@ -13,7 +13,7 @@ problem = [
 
 param = StructureParameters()
 param.corner = SpaceArea(0,0,2,2)
-param.crossover_radius = 1
+param.aggregation_radius = 1
 param.safety_factor_yield = 1
 param.material = MATERIAL_ALLUMINIUM
 param.node_mass_k = 1

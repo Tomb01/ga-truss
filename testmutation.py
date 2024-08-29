@@ -26,7 +26,7 @@ nodes_range = [1,20]
 
 param = StructureParameters()
 param.corner = SpaceArea(-0.5,-0.5,3,3)
-param.crossover_radius = 0.3
+param.aggregation_radius = 0.3
 param.safety_factor_yield = 1
 param.safety_factor_buckling = 1.5
 param.material = MATERIAL_ALLUMINIUM

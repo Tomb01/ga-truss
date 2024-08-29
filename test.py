@@ -17,7 +17,7 @@ trusses[1] = make_sym(np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]]))
 
 param = StructureParameters()
 param.corner = SpaceArea(-0.5,-0.5,1.5,1.5)
-param.crossover_radius = 1
+param.aggregation_radius = 1
 param.safety_factor_yield = 1
 param.material = Material(1, 1, 1)
 param.node_mass_k = 1

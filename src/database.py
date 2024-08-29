@@ -9,27 +9,28 @@ class Database:
     _connection: sqlite3.Connection
 
     def __init__(self, filename: str) -> None:
-        self._connection = sqlite3.connect(filename)
+        self._connection = sqlite3.connect(filename, isolation_level=None)
         creation_stm = """
             PRAGMA foreign_keys = off;
             BEGIN TRANSACTION;
             -- Table: generation
             DROP TABLE IF EXISTS generation;
-            CREATE TABLE generation (id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, population INTEGER NOT NULL DEFAULT (0), max_fitness DECIMAL NOT NULL DEFAULT (0));
+            CREATE TABLE generation (id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL DEFAULT 1, population INTEGER NOT NULL DEFAULT (0), max_fitness DECIMAL NOT NULL DEFAULT (0));
             -- Table: nodes
             DROP TABLE IF EXISTS nodes;
-            CREATE TABLE nodes (id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL, count INTEGER NOT NULL, structure_id INTEGER NOT NULL REFERENCES structures (id) ON DELETE CASCADE ON UPDATE CASCADE, x DECIMAL NOT NULL, y DECIMAL NOT NULL, Rx DECIMAL NOT NULL DEFAULT (0), Ry DECIMAL NOT NULL DEFAULT (0), u DECIMAL NOT NULL DEFAULT (0), v DECIMAL DEFAULT (0) NOT NULL, Px DECIMAL DEFAULT (0) NOT NULL, Py DECIMAL DEFAULT (0) NOT NULL);
+            CREATE TABLE nodes (id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL DEFAULT 1, count INTEGER NOT NULL, structure_id INTEGER NOT NULL REFERENCES structures (id) ON DELETE CASCADE ON UPDATE CASCADE, x DECIMAL NOT NULL, y DECIMAL NOT NULL, Rx DECIMAL NOT NULL DEFAULT (0), Ry DECIMAL NOT NULL DEFAULT (0), u DECIMAL NOT NULL DEFAULT (0), v DECIMAL DEFAULT (0) NOT NULL, Px DECIMAL DEFAULT (0) NOT NULL, Py DECIMAL DEFAULT (0) NOT NULL);
             -- Table: structures
             DROP TABLE IF EXISTS structures;
-            CREATE TABLE structures (id INTEGER PRIMARY KEY ON CONFLICT FAIL AUTOINCREMENT NOT NULL UNIQUE, generation_id INTEGER NOT NULL REFERENCES generation (id) ON DELETE CASCADE ON UPDATE CASCADE, yield_strength DECIMAL NOT NULL, density DECIMAL NOT NULL, elastic_modulus DECIMAL NOT NULL, node_k DECIMAL NOT NULL, constrain INTEGER NOT NULL);
+            CREATE TABLE structures (id INTEGER PRIMARY KEY ON CONFLICT FAIL AUTOINCREMENT NOT NULL UNIQUE DEFAULT 1, generation_id INTEGER NOT NULL REFERENCES generation (id) ON DELETE CASCADE ON UPDATE CASCADE, yield_strength DECIMAL NOT NULL, density DECIMAL NOT NULL, elastic_modulus DECIMAL NOT NULL, node_k DECIMAL NOT NULL, constrain INTEGER NOT NULL);
             -- Table: trusses
             DROP TABLE IF EXISTS trusses;
-            CREATE TABLE trusses (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE, structure_id INTEGER NOT NULL REFERENCES structures (id) ON DELETE CASCADE ON UPDATE CASCADE, area DECIMAL NOT NULL, stress DECIMAL NOT NULL, fitness DECIMAL NOT NULL, length DECIMAL NOT NULL, load DECIMAL NOT NULL DEFAULT (0), start_node INTEGER REFERENCES nodes (id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL, end_node INTEGER REFERENCES nodes (id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL);
+            CREATE TABLE trusses (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE DEFAULT 1, structure_id INTEGER NOT NULL REFERENCES structures (id) ON DELETE CASCADE ON UPDATE CASCADE, area DECIMAL NOT NULL, stress DECIMAL NOT NULL, fitness DECIMAL NOT NULL, length DECIMAL NOT NULL, load DECIMAL NOT NULL DEFAULT (0), start_node INTEGER REFERENCES nodes (id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL, end_node INTEGER REFERENCES nodes (id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL);
             COMMIT TRANSACTION;
             PRAGMA foreign_keys = on;"""
 
         self._connection.executescript(creation_stm)
         self._connection.commit()
+        self._connection.execute('pragma journal_mode=wal')
 
     def commit(self) -> None:
         self._connection.commit()
@@ -98,6 +99,9 @@ class Database:
         cursor.executemany(truss_stm, trusses_insert)
 
         self.commit()
+        
+    def close(self):
+        return self._connection.close()
 
     def read_structure(
         self, generation_id: int, structure_count: int, params: StructureParameters

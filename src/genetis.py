@@ -7,8 +7,8 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     
     inn1 = parent1.get_node_innovations()
     inn2 = parent2.get_node_innovations()
-    #kp1 = fit1/(fit1+fit2)
-    kp1 = 0.5
+    kp1 = fit1/(fit1+fit2)
+    #kp1 = 0.5
 
     n1 = len(inn1)
     n2 = len(inn2)

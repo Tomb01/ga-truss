@@ -31,7 +31,7 @@ def plot_node(axes, node: np.array, size=50, index=0, annotation = True) -> None
             plot_hinge(axes, node[0], node[1], node[6], node[7])
 
 def plot_structure(
-    structure: Structure, figure: plt.figure = None, axes: plt.axes = None, color="grey", annotation = True, area = [0,1]) -> None:
+    structure: Structure, figure: plt.figure = None, axes: plt.axes = None, color="grey", annotation = True) -> None:
     trusses = structure._trusses
     constrain = structure._n_constrain
     nodes = structure._nodes
@@ -40,16 +40,16 @@ def plot_structure(
         axes = plt.gca()
 
     #axes.grid()
-    area_range = area[1]
+    area_range = structure._parameters.max_area
     k_area = 2
     adj = np.triu(trusses[0])
     area_ratio = np.triu(np.divide(trusses[1], area_range, out=np.zeros_like(trusses[1]), where=(trusses[1]!=0)))
     n = len(nodes)
 
     space = structure._parameters.corner
-    axes.set_xlim(space.min_x-1, space.max_x+1)
-    axes.set_ylim(space.min_y-1, space.max_y+1)
-    axes.set_aspect('equal', adjustable='box')
+    #axes.set_xlim(space.min_x, space.max_x)
+    #axes.set_ylim(space.min_y, space.max_y)
+    #axes.set_aspect('equal', adjustable='box')
     node_size = 80
 
     for i in range(0, n):
@@ -66,7 +66,7 @@ def plot_structure(
                     angle = 90
                 else:
                     angle = degrees(atan2((e_y - s_y), (e_x - s_x)))
-                if annotation:
+                if annotation and False:
                     axes.text(
                         (s_x + e_x) / 2,
                         (s_y + e_y) / 2,

@@ -1,6 +1,6 @@
 import numpy as np
 from random import randrange, uniform
-from src.operations import distance, lenght, solve, make_sym, FLOAT_MAX
+from src.operations import distance, lenght, solve, make_sym, get_signed_max
 from typing import Tuple
 
 def Node(
@@ -47,6 +47,7 @@ class StructureParameters:
     corner: SpaceArea
     max_area: float
     min_area: float
+    max_displacement = float
 
 class Structure:
 
@@ -112,17 +113,15 @@ class Structure:
             adj[np.triu_indices(n, 1)] = triu
             self._trusses[0] = make_sym(adj)
             
-        rng = np.random.default_rng()
-        random_sample = rng.exponential(scale=4, size=(n,n))
+        area_matrix = np.round(
+            np.random.uniform(area_range[0], area_range[1], size=(n,n)),
+            self._parameters.round_digit,
+        )
         
-        b = area_range[1]
-        a = area_range[0]
-        area_matrix = (b - a) * random_sample + a
+        np.random.shuffle(area_matrix)
+        area_matrix[area_matrix < self._parameters.min_area] = self._parameters.min_area
+        area_matrix[area_matrix > self._parameters.max_area] = self._parameters.max_area
         
-        #area_matrix = np.round(
-           # np.random.uniform(area_range[0], area_range[1], size=(n, n)),
-            #self._parameters.round_digit,
-        #)
         self._trusses[1] = np.multiply(make_sym(np.triu(area_matrix)), self._trusses[0])
         
         self.check_connections_dimension()
@@ -287,7 +286,7 @@ class Structure:
         n = len(self._nodes)
         allowed_tensile_stress = self._parameters.material.yield_strenght/ self._parameters.safety_factor_yield
         if self._parameters.safety_factor_buckling > 1:
-            diameter = np.power(4*self._trusses[1]/3.14, 1/2)
+            diameter = self.get_diameters()
             stress_cr = np.divide((3.14**2)*self._parameters.material.elastic_modulus*np.power(diameter/4,2), np.power(self._trusses[6],2)*self._parameters.safety_factor_buckling, out=np.zeros_like(self._trusses[1]), where = self._trusses[0] != 0)
             buckling = np.logical_or(stress_cr > allowed_tensile_stress, self._trusses[2]>0)
             stress_cr[buckling] = allowed_tensile_stress
@@ -304,46 +303,58 @@ class Structure:
         
         return self._trusses[5]
            
-    def calculate_fitness(self) -> float:
+    def get_fitness(self) -> float:
 
         if not self._valid:
             # invalid
             return 1
         
-        worst_eff = np.max(self._trusses[5])
         stress_eff = 0
+        max_displacement = self.get_max_dispacement()
+        worst_eff = np.max(self._trusses[5])
+
+        _, total_mass, mass_matrix = self.get_mass(include_density=False)
         if worst_eff > 1:
             # broken
             stress_eff = 10**(-worst_eff)
+        elif max_displacement > self._parameters.max_displacement:
+            stress_eff = 10**(-max_displacement/self._parameters.max_displacement)
         else:
-            eff = np.mean(np.power(self._trusses[5], 2), where=(self._trusses[0]!=0))
+            eff = np.sum(self._trusses[5]*mass_matrix, where=(self._trusses[0]!=0))/np.sum(mass_matrix)
             stress_eff = eff
-        _, mass = self.get_mass(include_density=False)
-        return 1 - stress_eff/mass
+            
+        return 1 - stress_eff #/(total_mass)
         
     def is_broken(self) -> bool:
         if np.any(self._trusses[5]) > 0:
-            return np.max(self._trusses[5]) > 1
+            return np.max(self._trusses[5]) > 1 or self.get_max_dispacement() > self._parameters.max_displacement
         elif self._valid:
             raise ValueError("Efficency matrix not computed. Run compute method on this structure")
         
-    def get_max_stess(self) -> Tuple[float, float]:
-        return float(abs(np.max(self._trusses[3]))), float(abs(np.max(self._trusses[2])))
+    def get_max_stess(self) -> float:
+        return float(get_signed_max(self._trusses[3]))
     
-    def get_mass(self, include_density = True) -> Tuple[float, float]:
-        truss_volume = np.sum(self._trusses[1]*self._trusses[6])
+    def get_max_load(self) -> float:
+        return float(get_signed_max(self._trusses[2]))
+    
+    def get_diameters(self) -> np.array:
+        return np.power(4*self._trusses[1]/3.14, 1/2)
+    
+    def get_mass(self, include_density = True) -> Tuple[float, float, np.array]:
+        volume_matrix = self._trusses[1]*self._trusses[6]
+        truss_volume = np.sum(volume_matrix)/2
         node_volume = len(self._nodes)*self._parameters.node_mass_k
         if include_density:
             density = self._parameters.material.density
         else:
             density = 1
-        return float(truss_volume*density), float((truss_volume+node_volume)*density)
+        return float(truss_volume*density), float((truss_volume+node_volume)*density), volume_matrix*density
     
     def get_max_dispacement(self) -> float:
-        return float(np.max(self._nodes[:,2:3]))
+        return float(np.max(np.abs(self._nodes[:,2:4])))
         
     def compute(self) -> np.array:
         self.aggregate_nodes()
         self.solve()
         self.compute_stress_matrix()
-        return self.calculate_fitness()
+        return self.get_fitness()

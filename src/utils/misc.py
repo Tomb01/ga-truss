@@ -1,5 +1,7 @@
+from io import TextIOWrapper
 import numpy as np
 from math import sqrt
+from typing import Union
 
 def make_brige_coordinate(truss_length: float, bottom_truss: int) -> np.array:
     coordinates = np.zeros((bottom_truss*2+1, 2))
@@ -17,3 +19,8 @@ def node2table(node: np.array) -> str:
         node[j] = ['{:.3f}'.format(x) for x in node[j]]
         str += ";".join(node[j]) + "\n"
     return str
+
+def newline(f: TextIOWrapper, line: Union[str, float]) -> None:
+    if isinstance(line, float):
+        line = "{:.9f}".format(line)
+    f.write(f"{line}\n")

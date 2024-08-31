@@ -126,11 +126,15 @@ def pad_with_zeros(A, r, c):
     out[0:r_, 0:c_] = A
     return out
 
-def upper_tri_masking(A):
+def upper_tri_masking(A) -> Tuple[np.array, np.array]:
     m = A.shape[0]
     r = np.arange(m)
     mask = r[:,None] < r
-    return A[mask]
+    return A[mask], mask
+
+def get_signed_max(m):
+    idx = np.where(m == np.max(np.abs(m)))[0]
+    return m[idx]
 
 def vector_distance(y2, y1, x2, x1) -> float:
     return ((y2-y1)**2+(x2-x1)**2)**(1/2)

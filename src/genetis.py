@@ -47,7 +47,7 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     # Add joint for substructure
     
     #print(kp1)
-    child_conn_filter = make_sym(np.random.choice([0,1], k*k, p=[kp1, 1-kp1]).reshape((k,k))) == 1
+    child_conn_filter = make_sym(np.random.choice([0,1], k*k, p=[1-kp1, kp1]).reshape((k,k))) == 1
     #child_conn_filter = np.logical_or(genome1, genome2)
     child_genome = np.copy(genome1)
     child_genome[child_conn_filter] = genome2[child_conn_filter]
@@ -112,10 +112,8 @@ def area_mutation(s: Structure, area) -> Structure:
     i,j = np.nonzero(s._trusses[0])
     if len(i) > 0:
         ix = random.randrange(0, len(i)-1)
-        
         r = i[ix]
         c = j[ix]
-        
         s._trusses[1, r, c] = new_area
         s._trusses[1, c, r] = new_area
     

@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 from src.structure import Structure
 import numpy as np
 from math import atan2, degrees
+from src.utils.misc import newline
+from src.operations import upper_tri_masking
 
 def plot_load_arrow(axes, x, y, P, x_dir = True, color = "red") -> None:
     scale = 0.2 
@@ -31,7 +33,7 @@ def plot_node(axes, node: np.array, size=50, index=0, annotation = True) -> None
             plot_hinge(axes, node[0], node[1], node[6], node[7])
 
 def plot_structure(
-    structure: Structure, figure: plt.figure = None, axes: plt.axes = None, color="grey", annotation = True) -> None:
+    structure: Structure, figure: plt.figure = None, axes: plt.axes = None, color="grey", annotation = True, area_range = None) -> None:
     trusses = structure._trusses
     constrain = structure._n_constrain
     nodes = structure._nodes
@@ -40,7 +42,10 @@ def plot_structure(
         axes = plt.gca()
 
     areas = trusses[1]
-    area_range = np.max(areas) - np.min(areas[np.nonzero(areas)])
+    if area_range == None:
+        area_range = np.max(areas) - np.min(areas[np.nonzero(areas)])
+    else:
+        area_range = area_range[1] - area_range[0]
     adj = np.triu(trusses[0])
     area_ratio = np.triu(np.divide(areas, area_range, out=np.zeros_like(trusses[1]), where=(trusses[1]!=0)))
     n = len(nodes)
@@ -80,5 +85,28 @@ def plot_structure(
                     )
 
 
-def show():
-    plt.show()
+def savetxt(structure: Structure, file: str) -> None:
+    with open(file, "w") as f:
+        mass, total_mass, _ = structure.get_mass()
+        v_max = np.max(structure._nodes[3])
+        # General data
+        newline(f, structure.get_fitness())
+        newline(f, mass)
+        newline(f, total_mass)
+        newline(f, v_max)
+        newline(f, structure.get_DOF())
+        newline(f, structure.check())
+        # Nodes
+        newline(f, "")
+        for n in structure._nodes[:, 0:-1]:
+            newline(f, ";".join(str(c) for c in n))
+        # Trusses (normal form)
+        newline(f, "")
+        newline(f, "")
+        _, triu_mask = upper_tri_masking(structure._trusses[0])
+        for t in structure._trusses:
+            truss_data = t[triu_mask]
+            newline(f, ";".join(str(c) for c in truss_data))
+        # diameters
+        newline(f, ";".join(str(c) for c in structure.get_diameters()[triu_mask]))
+        

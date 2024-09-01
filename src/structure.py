@@ -166,12 +166,13 @@ class Structure:
             return
         
         dl = distance(self._nodes, self._trusses, False)
-        full_l = lenght(dl)
+        full_l = lenght(dl)  
         short_trusses = full_l<self._parameters.aggregation_radius*1.41
         np.fill_diagonal(short_trusses, False)
         if np.any(short_trusses):
             row, cols = np.where(short_trusses==True)
             m = int(len(row)/2)
+            print(m)
             if len(self._nodes) - m < self._n_constrain:
                 raise ValueError("Aggregation radius is smaller than constrain min node distance")
             for j in range(0, m):
@@ -313,7 +314,7 @@ class Structure:
         max_displacement = self.get_max_dispacement()
         worst_eff = np.max(self._trusses[5])
 
-        _, total_mass, mass_matrix = self.get_mass(include_density=False)
+        _, _, mass_matrix = self.get_mass(include_density=False)
         if worst_eff > 1:
             # broken
             stress_eff = 10**(-worst_eff)
@@ -323,7 +324,7 @@ class Structure:
             eff = np.sum(self._trusses[5]*mass_matrix, where=(self._trusses[0]!=0))/np.sum(mass_matrix)
             stress_eff = eff
             
-        return 1 - stress_eff #/(total_mass)
+        return 1 - stress_eff 
         
     def is_broken(self) -> bool:
         if np.any(self._trusses[5]) > 0:

@@ -45,7 +45,7 @@ def plot_structure(
     if area_range == None:
         area_range = np.max(areas) - np.min(areas[np.nonzero(areas)])
     else:
-        area_range = area_range[1] - area_range[0]
+        area_range = area_range[1] # - area_range[0]
     adj = np.triu(trusses[0])
     area_ratio = np.triu(np.divide(areas, area_range, out=np.zeros_like(trusses[1]), where=(trusses[1]!=0)))
     n = len(nodes)
@@ -72,17 +72,20 @@ def plot_structure(
                 else:
                     angle = degrees(atan2((e_y - s_y), (e_x - s_x)))
                 if annotation:
-                    axes.text(
-                        (s_x + e_x) / 2,
-                        (s_y + e_y) / 2,
-                        "{a:.3f} N".format(a=1-trusses[2, i, j], b=trusses[2, i, j], c=trusses[1, i, j]),
-                        fontsize=6,
-                        rotation=angle,
-                        horizontalalignment="left" if angle > 90 and angle < 270 else "right",
-                        verticalalignment="bottom",
-                        rotation_mode="anchor",
-                        transform_rotates_text=True
-                    )
+                    text = "{a:.3f} N".format(a=1-trusses[2, i, j], b=trusses[2, i, j], c=trusses[1, i, j])
+                else:
+                    text = ""
+                axes.text(
+                    (s_x + e_x) / 2,
+                    (s_y + e_y) / 2,
+                    text,
+                    fontsize=6,
+                    rotation=angle,
+                    horizontalalignment="left" if angle > 90 and angle < 270 else "right",
+                    verticalalignment="bottom",
+                    rotation_mode="anchor",
+                    transform_rotates_text=True
+                )
 
 
 def savetxt(structure: Structure, file: str) -> None:
@@ -103,7 +106,7 @@ def savetxt(structure: Structure, file: str) -> None:
         # Trusses (normal form)
         newline(f, "")
         newline(f, "")
-        _, triu_mask = upper_tri_masking(structure._trusses[0])
+        _, triu_mask = upper_tri_masking(structure.get_connections())
         for t in structure._trusses:
             truss_data = t[triu_mask]
             newline(f, ";".join(str(c) for c in truss_data))

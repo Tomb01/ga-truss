@@ -39,8 +39,8 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     genome1 = np.zeros((k, k))
     genome2 = np.zeros((k, k))
 
-    genome1[fp1] = parent1._trusses[0]
-    genome2[fp2] = parent2._trusses[0]
+    genome1[fp1] = parent1.get_connections()
+    genome2[fp2] = parent2.get_connections()
     
     ## TODO
     # Add node random delete
@@ -60,17 +60,17 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     child_nodes[filter_p2] = parent2._nodes
     child_nodes[filter_p1] = parent1._nodes
     c._nodes = child_nodes
-    c._trusses[0] = child_genome
+    c.set_connections(child_genome)
     
     # Ser areas
     area1 = np.zeros((k, k))
     area2 = np.zeros((k, k))
-    area1[fp1] = parent1._trusses[1]
-    area2[fp2] = parent2._trusses[1]
+    area1[fp1] = parent1.get_area()
+    area2[fp2] = parent2.get_area()
     child_area = np.copy(area1)
     child_area[child_conn_filter] = area2[child_conn_filter]
     np.fill_diagonal(child_area, 0)
-    c._trusses[1] = child_area
+    c.set_area(child_area)
     
     c.aggregate_nodes()
     c.healing()
@@ -109,13 +109,16 @@ def remove_node_mutation(s: Structure) -> Structure:
 
 def area_mutation(s: Structure, area) -> Structure:
     new_area = round(random.uniform(area[0], area[1]), s._parameters.round_digit)
-    i,j = np.nonzero(s._trusses[0])
+    conn = s.get_connections()
+    areas = s.get_area()
+    i,j = np.nonzero(conn)
     if len(i) > 0:
         ix = random.randrange(0, len(i)-1)
         r = i[ix]
         c = j[ix]
-        s._trusses[1, r, c] = new_area
-        s._trusses[1, c, r] = new_area
+        areas[r, c] = new_area
+        areas[c, r] = new_area
+        s.set_area(areas)
     
     return s
 
@@ -136,13 +139,17 @@ def connection_mutation(s: Structure, area) -> Structure:
     #print(random_idx)
     r = random_idx[0]
     c = random_idx[1]
-        
-    new_state = int(not s._trusses[0, r, c])
-    s._trusses[0, r, c] = new_state
-    s._trusses[0, c, r] = new_state
+    
+    conn = s.get_connections()
+    areas = s.get_area()
+    new_state = int(not conn[r, c])
+    conn[r, c] = new_state
+    conn[c, r] = new_state
     new_area = round(random.uniform(area[0], area[1]) * new_state, s._parameters.round_digit)
-    s._trusses[0, c, r] = new_area
-    s._trusses[0, r, c] = new_area
+    areas[c, r] = new_area
+    areas[r, c] = new_area
 
+    s.set_connections(conn)
+    s.set_area(areas)
 
     return s

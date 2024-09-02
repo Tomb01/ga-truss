@@ -70,6 +70,28 @@ class Structure:
         self._nodes = np.zeros((n, NODE_DIMENSION))
         self._trusses = np.zeros((TRUSS_DIMENSION, n, n))
         
+    def _check_dimension(self, trusses: np.array, raise_error = True) -> bool:
+        if len(self._nodes) != trusses.shape[0]:
+            if raise_error:
+                raise ValueError("Invalid truss dimension")
+            return False
+        else:
+            return True
+        
+    def set_connections(self, new_connections: np.array) -> None:
+        if self._check_dimension(new_connections):
+            self._trusses[0] = np.copy(new_connections)
+            
+    def get_connections(self) -> np.array:
+        return np.copy(self._trusses[0])
+            
+    def set_area(self, new_area: np.array) -> None:
+        if self._check_dimension(new_area):
+            self._trusses[1] = np.copy(new_area)*self._trusses[0]
+            
+    def get_area(self) -> np.array:
+        return np.copy(self._trusses[1])
+        
     def constrain_connections(self, connections = np.array) -> None:
         if len(connections) != len(self._nodes):
             raise ValueError("connection constrained matrix wrong dimension")
@@ -172,7 +194,7 @@ class Structure:
         if np.any(short_trusses):
             row, cols = np.where(short_trusses==True)
             m = int(len(row)/2)
-            print(m)
+            #print(m, short_trusses, row, cols)
             if len(self._nodes) - m < self._n_constrain:
                 raise ValueError("Aggregation radius is smaller than constrain min node distance")
             for j in range(0, m):
@@ -259,10 +281,10 @@ class Structure:
             x = self._nodes[i, 0]
             y = self._nodes[i, 1]
             if crossover_radius != 0:
-                x_min = x - x%crossover_radius
-                x_max = x_min+crossover_radius
-                y_min = y - y%crossover_radius
-                y_max = y_min+crossover_radius
+                x_min = x # - x%crossover_radius
+                x_max = x #_min+crossover_radius
+                y_min = y # - y%crossover_radius
+                y_max = y #_min+crossover_radius
             else:
                 x_min = x
                 x_max = x

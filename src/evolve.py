@@ -50,6 +50,7 @@ def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParam
     if mutation_k_tot>1:
         warnings.warn("Mutation percentage sum exceed 1. Automatic fixing will be executed")
         mutation_k = np.divide(mutation_k, mutation_k_tot, out=np.zeros_like(mutation_k), where=(mutation_k!=0))
+        print(mutation_k)
 
     # Init population array
     current_population = np.empty(POPULATION, dtype=np.object_)
@@ -98,9 +99,9 @@ def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParam
             current_fitness = round(current_population[i].compute(),6) 
             fitness[i] = current_fitness
             if FLAG_ADJ_FITNESS:
-                niche_population = len(np.nonzero((fitness<=(current_fitness+eparam.niche_radius))*(fitness>=(current_fitness-eparam.niche_radius)))[0])
+                niche_population = len(np.nonzero((fitness[0:i]<=(current_fitness+eparam.niche_radius))*(fitness[0:i]>=(current_fitness-eparam.niche_radius)))[0])
                 niche_count[i] = niche_population
-                adj_fitness[i] = current_fitness*2**(niche_population)
+                adj_fitness[i] = current_fitness*2**(niche_count[i])
             if FLAG_DATABASE:
                 db.save_structure(e+1, current_population[i])
             
@@ -109,6 +110,7 @@ def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParam
             sorted_idx = np.argsort(adj_fitness)
         else:
             sorted_idx = np.argsort(fitness)
+            adj_fitness = fitness
         current_population = current_population[sorted_idx]
         fitness = fitness[sorted_idx]
         adj_fitness = adj_fitness[sorted_idx]

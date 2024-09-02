@@ -1,6 +1,6 @@
 import numpy as np
 from random import randrange, uniform
-from src.operations import distance, lenght, solve, make_sym, get_signed_max
+from src.operations import distance, lenght, solve, make_sym, get_signed_max, repeat
 from typing import Tuple
 
 def Node(
@@ -152,12 +152,29 @@ class Structure:
         
         self._parameters.min_area = area_range[0]
         self._parameters.max_area = area_range[1]
+        
+    def check_collinear(self) -> bool:
+        d = distance(self._nodes, self._trusses, conn=False)
+        l = lenght(d)
+        x = self._nodes[:,0]
+        y = self._nodes[:,1]
+        n = len(self._nodes)
+        for i in range(0, n):
+            node = self._nodes[i]
+            dnode = ((node[1]-y)**2+(node[0]-x)**2)**(1/2)
+            dnode_m = np.resize(dnode, (n,n))
+            dsum = dnode_m+dnode_m.T
+            collinear = np.nonzero(np.isclose(dsum, l)*self._trusses[0])[0]
+            if len(collinear)/2 >= n:
+                return True
+        return False
 
     def check(self) -> bool:
         # Statically indeterminate if 2n < m
         free_nodes = (self._nodes[:,4]+self._nodes[:,5])==0
         edge_node = np.sum(self._trusses[0], axis=0)
-        if np.all(edge_node[free_nodes] > 1): # and np.all(edge_node > 0):
+        collinear = self.check_collinear()
+        if np.all(edge_node[free_nodes] > 1) and not collinear: # and np.all(edge_node > 0):
             if self.get_DOF() > 0:
                 self._valid = False
             else:
@@ -180,7 +197,7 @@ class Structure:
         else:
             # delete disjoint nodes
             self.remove_node(np.nonzero(disjoint_nodes)[0])
-            self.check()
+            #self.check()
             return True
         
     def aggregate_nodes(self) -> None:

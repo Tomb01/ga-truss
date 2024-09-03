@@ -123,7 +123,7 @@ class Structure:
         if not self._fixed_connections:
             self._trusses = np.zeros((TRUSS_DIMENSION, n, n))
             # struttura al più stabile m = 2n
-            m = 2*n
+            m = 2*n-3
             d = np.sum(np.triu(np.ones(n))) - n
             if m < d:
                 triu = np.concatenate([np.ones(m), np.zeros(int(d - m))])
@@ -153,7 +153,7 @@ class Structure:
         self._parameters.min_area = area_range[0]
         self._parameters.max_area = area_range[1]
         
-    def check_collinear(self) -> bool:
+    def has_collinear_edge(self) -> bool:
         d = distance(self._nodes, self._trusses, conn=False)
         l = lenght(d)
         x = self._nodes[:,0]
@@ -164,8 +164,11 @@ class Structure:
             dnode = ((node[1]-y)**2+(node[0]-x)**2)**(1/2)
             dnode_m = np.resize(dnode, (n,n))
             dsum = dnode_m+dnode_m.T
+            dsum[i] = 0
+            dsum[:, i] = 0
             collinear = np.nonzero(np.isclose(dsum, l)*self._trusses[0])[0]
-            if len(collinear)/2 >= n:
+            #print(collinear)
+            if len(collinear) > 0:
                 return True
         return False
 
@@ -173,7 +176,7 @@ class Structure:
         # Statically indeterminate if 2n < m
         free_nodes = (self._nodes[:,4]+self._nodes[:,5])==0
         edge_node = np.sum(self._trusses[0], axis=0)
-        collinear = self.check_collinear()
+        collinear = self.has_collinear_edge()
         if np.all(edge_node[free_nodes] > 1) and not collinear: # and np.all(edge_node > 0):
             if self.get_DOF() > 0:
                 self._valid = False

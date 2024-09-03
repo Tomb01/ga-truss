@@ -24,9 +24,9 @@ else:
     sim_mutation_ratio = eparam.total_mutation_ratio
 
 # sample, best, fitness
-SAMPLE = 4
+SAMPLE = 10
 figure = plt.gcf()
-
+print(eparam.epochs)
 
 SIMULATIONS = sim_count
 mass = np.zeros(SIMULATIONS)
@@ -37,6 +37,8 @@ print("Start {}".format(sim_folder))
 
 for s in range(0, SIMULATIONS):
     fitness, best, sample, area_range = evolve(problem, eparam, sparam, sample_point=SAMPLE, constrained_connections=connections)
+    # Print and save
+    print(s, len(fitness), fitness[-1], best.is_broken(), best.check(), best.get_mass()[0], best.get_max_dispacement())
     mass[s] = best.get_mass()[0]
     to_plot = np.append(sample, [best])
     for f in range(0, SAMPLE+1):
@@ -53,8 +55,6 @@ for s in range(0, SIMULATIONS):
     figure.savefig("{}/{}_f.png".format(sim_folder, s))
     figure.clear()
     
-    # Print and save
-    print(s, len(fitness), fitness[-1], best.is_broken(), best.check(), best.get_mass()[0], best.get_max_dispacement(), area_range)
     savetxt(best, "{}/{}_s.csv".format(sim_folder, s))
 
 # append to master file

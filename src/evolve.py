@@ -24,7 +24,7 @@ class EvolutionParameter:
     mass_target: float
 
     
-def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParameters, sample_point: int = 4, database_file = None, constrained_connections: np.array = None) -> Tuple[np.array, Structure, np.array, np.array]:
+def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParameters, sample_point: int, database_file = None, constrained_connections: np.array = None) -> Tuple[np.array, Structure, np.array, np.array]:
 
     # Init flag and constants
     area_range = [sparam.min_area, sparam.max_area]
@@ -170,7 +170,7 @@ def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParam
         # save data for return
         out_max_fitness[e] = fitness[0]
         if e > 0:
-            if e%(EPOCH//(sample_point+1)) == 0:
+            if e%(EPOCH//(sample_point)) == 0:
                 out_sample[sample_index] = current_population[0]
                 sample_index+=1
                 #eparam.total_mutation_ratio += 0.1

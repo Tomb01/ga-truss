@@ -33,7 +33,7 @@ def plot_node(axes, node: np.array, size=50, index=0, annotation = True) -> None
             plot_hinge(axes, node[0], node[1], node[6], node[7])
 
 def plot_structure(
-    structure: Structure, figure: plt.figure = None, axes: plt.axes = None, color="grey", annotation = True, area_range = None) -> None:
+    structure: Structure, figure: plt.figure = None, axes: plt.axes = None, color=None, annotation = True, area_range = None) -> None:
     trusses = structure._trusses
     constrain = structure._n_constrain
     nodes = structure._nodes
@@ -66,7 +66,7 @@ def plot_structure(
                 s_y = nodes[i, 1]
                 e_y = nodes[j, 1]
                 line = (5 - 1) * area_ratio[i,j] + 1
-                axes.plot([s_x, e_x], [s_y, e_y], color=color, linewidth = line)
+                axes.plot([s_x, e_x], [s_y, e_y], color=color, linewidth = line, zorder=0)
                 if e_x == s_x:
                     angle = 90
                 else:

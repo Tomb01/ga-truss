@@ -146,3 +146,19 @@ def binary_turnament(fitness: np.array) -> int:
         return p1
     else:
         return p2
+
+# https://math.stackexchange.com/a/911040
+def deg(adj: np.array) -> np.array:
+    edge = np.sum(adj, axis=0)
+    out = np.zeros_like(adj)
+    diag_idx = np.diag_indices(adj.shape[0])
+    out[diag_idx] = edge
+    return out
+
+def laplacian(adj: np.array) -> np.array:
+    D = deg(adj)
+    return D - adj
+
+def is_cyclic(adj: np.array) -> bool:
+    L = laplacian(adj)
+    return np.trace(L) >= (np.linalg.matrix_rank(L)+1)

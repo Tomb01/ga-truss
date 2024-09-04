@@ -26,7 +26,7 @@ else:
 # sample, best, fitness
 SAMPLE = 10
 figure = plt.gcf()
-print(eparam.epochs)
+
 
 SIMULATIONS = sim_count
 mass = np.zeros(SIMULATIONS)

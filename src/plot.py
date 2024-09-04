@@ -43,7 +43,7 @@ def plot_structure(
 
     areas = trusses[1]
     if area_range == None:
-        area_range = np.max(areas) - np.min(areas[np.nonzero(areas)])
+        area_range = np.max(areas) #- np.min(areas[np.nonzero(areas)])
     else:
         area_range = area_range[1] # - area_range[0]
     adj = np.triu(trusses[0])
@@ -51,9 +51,9 @@ def plot_structure(
     n = len(nodes)
 
     space = structure._parameters.corner
-    #axes.set_xlim(space.min_x, space.max_x)
-    #axes.set_ylim(space.min_y, space.max_y)
-    #axes.set_aspect('equal', adjustable='box')
+    axes.set_xlim(space.min_x-1, space.max_x+1)
+    axes.set_ylim(space.min_y-1, space.max_y+1)
+    axes.set_aspect('equal', adjustable='box')
     node_size = 80
 
     for i in range(0, n):
@@ -65,7 +65,7 @@ def plot_structure(
                 e_x = nodes[j, 0]
                 s_y = nodes[i, 1]
                 e_y = nodes[j, 1]
-                line = (5 - 1) * area_ratio[i,j] + 1
+                line = (3 - 1) * area_ratio[i,j] + 1
                 axes.plot([s_x, e_x], [s_y, e_y], color=color, linewidth = line, zorder=0)
                 if e_x == s_x:
                     angle = 90
@@ -97,7 +97,7 @@ def savetxt(structure: Structure, file: str) -> None:
         newline(f, mass)
         newline(f, total_mass)
         newline(f, v_max)
-        newline(f, structure.get_DOF())
+        newline(f, structure.get_truss_DOF())
         newline(f, structure.check())
         # Nodes
         newline(f, "")

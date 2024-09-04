@@ -99,9 +99,12 @@ class Structure:
         self._trusses[1] = connections*self._trusses[1]
         self._fixed_connections = True
 
-    def init_random(self, nodes_range, area_range):
+    def init_random(self, nodes_range, area_range = None):
         if self._fixed_connections and nodes_range != [0,0]:
             raise ValueError("constrained connections is only available with no nodes generation (nodes_range = [0,0])")
+        
+        if area_range == None:
+            area_range = [self._parameters.min_area, self._parameters.max_area]
         
         if nodes_range[0] == nodes_range[1]:
             n = nodes_range[0]
@@ -171,24 +174,32 @@ class Structure:
             if len(collinear) > 0:
                 return True
         return False
+    
+    def _free_nodes(self) -> np.array:
+        return (self._nodes[:,4]+self._nodes[:,5]) == 0
 
     def check(self) -> bool:
         # Statically indeterminate if 2n < m
-        free_nodes = (self._nodes[:,4]+self._nodes[:,5])==0
+        free_nodes = self._free_nodes()
         edge_node = np.sum(self._trusses[0], axis=0)
-        collinear = self.has_collinear_edge()
-        if np.all(edge_node[free_nodes] > 1) and not collinear: # and np.all(edge_node > 0):
-            if self.get_DOF() > 0:
-                self._valid = False
-            else:
-                self._valid = True
-        else:
+        edge_node = edge_node - free_nodes
+        over_conn = self._trusses[0, ~free_nodes]
+        o = over_conn[:,~free_nodes].sum()/2
+        print(o)
+        
+        if np.any(edge_node[free_nodes] < 1):
             self._valid = False
+        elif self.get_truss_DOF() + o > 0:
+            self._valid = False
+        elif self.has_collinear_edge():
+            self._valid = False
+        else:
+            self._valid = True
         
         return self._valid
         
     def healing(self) -> bool:
-        if len(self._nodes) == self._n_constrain:
+        if len(self._nodes) <= self._n_constrain:
             return
         
         free_nodes = (self._nodes[:,4]+self._nodes[:,5])==0
@@ -201,10 +212,10 @@ class Structure:
             # delete disjoint nodes
             self.remove_node(np.nonzero(disjoint_nodes)[0])
             #self.check()
-            return True
+            return True  
         
     def aggregate_nodes(self) -> None:
-        if len(self._nodes) == self._n_constrain:
+        if len(self._nodes) <= self._n_constrain:
             return
         
         dl = distance(self._nodes, self._trusses, False)
@@ -243,7 +254,7 @@ class Structure:
     def get_node_connection(self) -> int:
         return np.sum(self._trusses[0], axis=0)
         
-    def get_DOF(self) -> int:
+    def get_truss_DOF(self) -> int:
         return 2 * len(self._nodes) - self.get_edge_count() - self._reactions
 
     def get_edge_count(self) -> int:

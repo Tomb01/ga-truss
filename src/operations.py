@@ -21,7 +21,7 @@ def distance(nodes: np.array, trusses: np.array, conn = True):
     else:
         return x
 
-def lenght(distances: np.array) -> np.array:
+def length(distances: np.array) -> np.array:
     return (distances[0]**2+distances[1]**2)**(1/2)
 
 def inclination(distances: np.array) -> np.array:
@@ -43,7 +43,7 @@ def make_sym(m: np.array) -> np.array:
 def solve(nodes, trusses, elastic_modulus) -> np.array:
     # Calculation of trusses lenghts and inclinations
     dl = distance(nodes, trusses)
-    l = lenght(dl)
+    l = length(dl)
     K = np.divide(elastic_modulus*trusses[1], l, out=np.zeros_like(l), where=trusses[0]!=0)
     a = inclination(dl)
     trusses[6] = l

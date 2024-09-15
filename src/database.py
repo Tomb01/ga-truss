@@ -146,6 +146,6 @@ class Database:
         s._nodes = nodes
         s._trusses = trusses_m
         
-        s.check()
+        s.is_valid()
         
         return s

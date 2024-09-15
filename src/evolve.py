@@ -25,7 +25,7 @@ class EvolutionParameter:
 
     
 def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParameters, sample_point: int, database_file = None, constrained_connections: np.array = None) -> Tuple[np.array, Structure, np.array, np.array]:
-
+    
     # Init flag and constants
     area_range = [sparam.min_area, sparam.max_area]
     FLAG_ADJ_FITNESS = False if eparam.sort_adj_fitness == None else eparam.sort_adj_fitness
@@ -85,7 +85,7 @@ def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParam
     
     # Evolution
     e = 0
-    mass = eparam.mass_target*2
+    mass = eparam.mass_target*2 if eparam.mass_target!=0 else 1
     while e < EPOCH and mass > eparam.mass_target:
         current_population = new_population 
         new_population = np.empty(POPULATION, dtype=np.object_)
@@ -93,15 +93,14 @@ def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParam
         adj_fitness = np.zeros((POPULATION), dtype=float)
         if FLAG_DATABASE:
             db.append_generation(POPULATION,0)
-        
         # Calculate fitness and adj fitness
         for i in range(0, POPULATION):
             current_fitness = round(current_population[i].compute(),6) 
             fitness[i] = current_fitness
             if FLAG_ADJ_FITNESS:
                 niche_population = len(np.nonzero((fitness[0:i]<=(current_fitness+eparam.niche_radius))*(fitness[0:i]>=(current_fitness-eparam.niche_radius)))[0])
-                niche_count[i] = niche_population
-                adj_fitness[i] = current_fitness*2**(niche_count[i])
+                niche_count[i] = niche_population+1
+                adj_fitness[i] = current_fitness*(niche_count[i])
             if FLAG_DATABASE:
                 db.save_structure(e+1, current_population[i])
             
@@ -166,6 +165,7 @@ def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParam
             raise IndexError("Failed to generate new population {c}/{r}".format(c=i+1, r=POPULATION))
         
         mass = current_population[0].get_mass()[0]
+        mass = eparam.mass_target*2 if mass==0 else mass
         
         # save data for return
         out_max_fitness[e] = fitness[0]

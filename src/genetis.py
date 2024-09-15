@@ -62,7 +62,7 @@ def crossover(parent1: Structure, parent2: Structure, constrain_n: int, fit1: fl
     c._nodes = child_nodes
     c.set_connections(child_genome)
     
-    # Ser areas
+    # Set areas
     area1 = np.zeros((k, k))
     area2 = np.zeros((k, k))
     area1[fp1] = parent1.get_area()
@@ -126,8 +126,21 @@ def node_position_mutation(s: Structure) -> Structure:
     if s._n_constrain != len(s._nodes):
         corner = s._parameters.corner
         i = random.randrange(s._n_constrain, len(s._nodes))
-        new_x = random.uniform(corner.min_x, corner.max_x)
-        new_y = random.uniform(corner.min_y, corner.max_y)
+        x = s._nodes[i,0]
+        y = s._nodes[i,0]
+        r = s._parameters.max_length/2
+        new_x = random.uniform(x - r,  x + r)
+        new_y = random.uniform(y - r,  y + r)
+        
+        if new_x > corner.max_x:
+            new_x = corner.max_x
+        elif new_x < corner.min_x:
+            new_x = corner.min_x
+            
+        if new_y > corner.max_y:
+            new_y = corner.max_y
+        elif new_y < corner.min_y:
+            new_y = corner.min_y
               
         s._nodes[i,0] = round(new_x, s._parameters.round_digit)
         s._nodes[i,1] = round(new_y, s._parameters.round_digit)

@@ -1,4 +1,4 @@
-from studies.simdata_10bar import problem, connections, eparam, sparam
+from studies.simdata_39bar import problem, connections, eparam, sparam
 from src.plot import plot_structure, savetxt
 from src.evolve import evolve
 import matplotlib.pyplot as plt
@@ -38,8 +38,9 @@ print("Start {}".format(sim_folder))
 for s in range(0, SIMULATIONS):
     fitness, best, sample, area_range = evolve(problem, eparam, sparam, sample_point=SAMPLE, constrained_connections=connections)
     # Print and save
-    print(s, len(fitness), fitness[-1], best.is_broken(), best.check(), best.get_mass()[0], best.get_max_dispacement())
+    print(s, len(fitness), fitness[-1], best.is_broken(), best.is_valid(), best.get_mass()[0], best.get_max_dispacement(), np.max(best._trusses[6])/sparam.max_length, np.max(best._trusses[5]))
     mass[s] = best.get_mass()[0]
+    #print(best._nodes[:,2:4])
     to_plot = np.append(sample, [best])
     for f in range(0, SAMPLE+1):
         if to_plot[f] != None:
@@ -54,7 +55,6 @@ for s in range(0, SIMULATIONS):
     np.savetxt("{}/{}_f.csv".format(sim_folder, s), np.array([x_e, fitness]).T, delimiter=";",)
     figure.savefig("{}/{}_f.png".format(sim_folder, s))
     figure.clear()
-    
     savetxt(best, "{}/{}_s.csv".format(sim_folder, s))
 
 # append to master file

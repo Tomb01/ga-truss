@@ -1,6 +1,7 @@
+import warnings
 import numpy as np
 from random import randrange, uniform
-from src.operations import distance, lenght, solve, make_sym, get_signed_max, repeat
+from src.operations import distance, length, solve, make_sym, get_signed_max, repeat
 from typing import Tuple
 
 def Node(
@@ -47,7 +48,8 @@ class StructureParameters:
     corner: SpaceArea
     max_area: float
     min_area: float
-    max_displacement = float
+    max_displacement: float
+    max_length: float
 
 class Structure:
 
@@ -84,6 +86,9 @@ class Structure:
             
     def get_connections(self) -> np.array:
         return np.copy(self._trusses[0])
+    
+    def get_efficency(self) -> np.array:
+        return np.copy(self._trusses[5])
             
     def set_area(self, new_area: np.array) -> None:
         if self._check_dimension(new_area):
@@ -118,32 +123,38 @@ class Structure:
         
         if n!=self._n_constrain:
             # Add new random node
-            for i in range(self._n_constrain, n):
-                x = uniform(allowed_space.min_x, allowed_space.max_x)
-                y = uniform(allowed_space.min_y, allowed_space.max_y)
-                self._nodes[i] = Node(x, y)
+            self._nodes[self._n_constrain:,0] = np.random.uniform(allowed_space.min_x, allowed_space.max_x, size=(n-self._n_constrain))
+            self._nodes[self._n_constrain:,1] = np.random.uniform(allowed_space.min_y, allowed_space.max_y, size=(n-self._n_constrain))
                 
         if not self._fixed_connections:
             self._trusses = np.zeros((TRUSS_DIMENSION, n, n))
-            # struttura al più stabile m = 2n
-            m = 2*n-3
-            d = np.sum(np.triu(np.ones(n))) - n
-            if m < d:
-                triu = np.concatenate([np.ones(m), np.zeros(int(d - m))])
-                np.random.shuffle(triu)
-            else:
-                triu = np.ones(int(d))
-
-            adj = np.zeros((n, n))
-            adj[np.triu_indices(n, 1)] = triu
-            self._trusses[0] = make_sym(adj)
+            l = length(distance(self._nodes, self._trusses[0], False))
+            self._trusses[0, l < self._parameters.max_length*0.99] = 1
+            conn = self.get_edge_count()
+            m = int(2*n-3-conn)
+            if m > 0:
+                # Fill remaining edge
+                np.fill_diagonal(self._trusses[0], 1)
+                adj = self.get_connections()
+                rows, cols = (adj == 0).nonzero()
+                # https://stackoverflow.com/a/4602224
+                p = np.random.permutation(len(rows))
+                rows = rows[p] 
+                cols = cols[p]
+                adj[rows[0:m], cols[0:m]] = 1
+                self._trusses[0] = adj
+                
+            np.fill_diagonal(self._trusses[0], 0) 
+            self._trusses[0] = make_sym(self._trusses[0])
             
+        a_min = area_range[0] #area_range[1] - (area_range[1] - area_range[0])*1
         area_matrix = np.round(
-            np.random.uniform(area_range[0], area_range[1], size=(n,n)),
+            np.random.uniform(a_min, area_range[1], size=(n,n)),
+            #np.full((n,n), area_range[1]),
             self._parameters.round_digit,
         )
         
-        np.random.shuffle(area_matrix)
+        #np.random.shuffle(area_matrix)
         area_matrix[area_matrix < self._parameters.min_area] = self._parameters.min_area
         area_matrix[area_matrix > self._parameters.max_area] = self._parameters.max_area
         
@@ -152,13 +163,14 @@ class Structure:
         self.check_connections_dimension()
         self.healing()
         self.aggregate_nodes()
+        self.has_collinear_edge(True)
         
         self._parameters.min_area = area_range[0]
         self._parameters.max_area = area_range[1]
         
-    def has_collinear_edge(self) -> bool:
+    def has_collinear_edge(self, delete = False) -> bool:
         d = distance(self._nodes, self._trusses, conn=False)
-        l = lenght(d)
+        l = length(d)
         x = self._nodes[:,0]
         y = self._nodes[:,1]
         n = len(self._nodes)
@@ -169,33 +181,44 @@ class Structure:
             dsum = dnode_m+dnode_m.T
             dsum[i] = 0
             dsum[:, i] = 0
-            collinear = np.nonzero(np.isclose(dsum, l)*self._trusses[0])[0]
-            #print(collinear)
-            if len(collinear) > 0:
-                return True
+            collinear = np.nonzero(np.isclose(dsum, l, rtol=0.002)*self._trusses[0])
+            if delete:
+                # delete collinear edge
+                self._trusses[0, collinear[0], collinear[1]] = 0
+            else:
+                if len(collinear[0]) > 0:
+                    return True
         return False
     
     def _free_nodes(self) -> np.array:
         return (self._nodes[:,4]+self._nodes[:,5]) == 0
-
-    def check(self) -> bool:
+    
+    def _check(self) -> bool:
         # Statically indeterminate if 2n < m
         free_nodes = self._free_nodes()
         edge_node = np.sum(self._trusses[0], axis=0)
-        edge_node = edge_node - free_nodes
-        over_conn = self._trusses[0, ~free_nodes]
-        o = over_conn[:,~free_nodes].sum()/2
-        print(o)
+        edge_node = edge_node + ~free_nodes
+        dof = self.get_truss_DOF()
         
-        if np.any(edge_node[free_nodes] < 1):
-            self._valid = False
-        elif self.get_truss_DOF() + o > 0:
-            self._valid = False
-        elif self.has_collinear_edge():
-            self._valid = False
+        #print(edge_node)
+        if np.any(edge_node < 2):
+            return False
+        
+        if dof > 0:
+            return False
         else:
-            self._valid = True
+            over_conn = self._trusses[0, ~free_nodes]
+            o = over_conn[:,~free_nodes].sum()/2
+            if dof == 0 and o != 0:
+                return False
         
+        if self.has_collinear_edge():
+            return False
+        
+        return True
+
+    def is_valid(self) -> bool:
+        self._valid = self._check()
         return self._valid
         
     def healing(self) -> bool:
@@ -219,7 +242,7 @@ class Structure:
             return
         
         dl = distance(self._nodes, self._trusses, False)
-        full_l = lenght(dl)  
+        full_l = length(dl)  
         short_trusses = full_l<self._parameters.aggregation_radius*1.41
         np.fill_diagonal(short_trusses, False)
         if np.any(short_trusses):
@@ -227,7 +250,9 @@ class Structure:
             m = int(len(row)/2)
             #print(m, short_trusses, row, cols)
             if len(self._nodes) - m < self._n_constrain:
-                raise ValueError("Aggregation radius is smaller than constrain min node distance")
+                warnings.warn("Aggregation radius is smaller than constrain min node distance")
+                #self._valid = False
+
             for j in range(0, m):
                 keep = row[j]
                 merge = cols[j]
@@ -239,7 +264,7 @@ class Structure:
                 connections[keep] = 0
                 self._trusses[0, keep, :] = connections
                 self._trusses[0, : , keep] = connections
-                
+                    
                 area_merge = self._trusses[1,merge]
                 area_keep = self._trusses[1,keep]
                 area = np.maximum(area_merge, area_keep)
@@ -293,7 +318,7 @@ class Structure:
         self._trusses = np.delete(self._trusses, index, axis=2)
 
     def solve(self):
-        self.check()
+        self.is_valid()
         if self._valid:
             try:
                 solve(
@@ -366,22 +391,23 @@ class Structure:
         stress_eff = 0
         max_displacement = self.get_max_dispacement()
         worst_eff = np.max(self._trusses[5])
+        max_length = np.max(self._trusses[6])
 
-        _, _, mass_matrix = self.get_mass(include_density=False)
-        if worst_eff > 1:
-            # broken
-            stress_eff = 10**(-worst_eff)
-        elif max_displacement > self._parameters.max_displacement:
-            stress_eff = 10**(-max_displacement/self._parameters.max_displacement)
+        total_mass, _, mass_matrix = self.get_mass(include_density=False)
+        if max_displacement > 0.99*self._parameters.max_displacement or worst_eff > 0.99 or max_length > 0.99*self._parameters.max_length:
+            stress_eff = 10**-(max(max_displacement/self._parameters.max_displacement, worst_eff, max_length/self._parameters.max_length))
         else:
-            eff = np.sum(self._trusses[5]*mass_matrix, where=(self._trusses[0]!=0))/np.sum(mass_matrix)
+            mass_index = mass_matrix/total_mass
+            eff = np.mean(self._trusses[5]*mass_index, where=(self._trusses[0]!=0))
             stress_eff = eff
-            
-        return 1 - stress_eff 
+            #print(eff)
+            #eff = total_mass/200
+           
+        return 1 - stress_eff
         
     def is_broken(self) -> bool:
         if np.any(self._trusses[5]) > 0:
-            return np.max(self._trusses[5]) > 1 or self.get_max_dispacement() > self._parameters.max_displacement
+            return np.max(self._trusses[5]) > 1 or self.get_max_dispacement() > self._parameters.max_displacement or np.any(self._trusses[6]>self._parameters.max_length)
         elif self._valid:
             raise ValueError("Efficency matrix not computed. Run compute method on this structure")
         

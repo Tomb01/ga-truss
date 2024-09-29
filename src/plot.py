@@ -5,6 +5,8 @@ from math import atan2, degrees
 from src.utils.misc import newline
 from src.operations import upper_tri_masking
 
+## Set of varius output and graphics function
+
 def plot_load_arrow(axes, x, y, P, x_dir = True, color = "red") -> None:
     scale = 0.2 
     d = (P and P / abs(P) or 0)*scale
@@ -18,7 +20,6 @@ def plot_hinge(axes, x, y, Rx, Ry, color = "blue") -> None:
     axes.scatter(x, y, size, color = "black", marker=6)
     plot_load_arrow(axes, x, y, Rx, True, color=color)
     plot_load_arrow(axes, x, y, Ry, False, color=color)
-    
 
 def plot_node(axes, node: np.array, size=50, index=0, annotation = True) -> None:
     axes.scatter(node[0], node[1], size, color = "grey")
@@ -34,6 +35,17 @@ def plot_node(axes, node: np.array, size=50, index=0, annotation = True) -> None
 
 def plot_structure(
     structure: Structure, figure: plt.figure = None, axes: plt.axes = None, color=None, annotation = True, area_range = None) -> None:
+    """
+    Plot a structure with matplotlib
+
+    Args:
+        structure (Structure): structure to plot
+        figure (plt.figure, optional): matplotlib Figure object. Defaults to None.
+        axes (plt.axes, optional): matplotlib Axes objec. Defaults to None.
+        color (_type_, optional): structure color. Defaults to None.
+        annotation (bool, optional): add annotation to bar and node. Defaults to True.
+        area_range (_type_, optional): scale line width on specific area range. Defaults to None.
+    """
     trusses = structure._trusses
     constrain = structure._n_constrain
     nodes = structure._nodes
@@ -43,9 +55,9 @@ def plot_structure(
 
     areas = trusses[1]
     if area_range == None:
-        area_range = np.max(areas) #- np.min(areas[np.nonzero(areas)])
+        area_range = np.max(areas) 
     else:
-        area_range = area_range[1] # - area_range[0]
+        area_range = area_range[1] 
     adj = np.triu(trusses[0])
     area_ratio = np.triu(np.divide(areas, area_range, out=np.zeros_like(trusses[1]), where=(trusses[1]!=0)))
     n = len(nodes)

@@ -1,28 +1,42 @@
 import warnings
 import numpy as np
-from random import randrange, uniform
-from src.operations import distance, length, solve, make_sym, get_signed_max, repeat
+from random import randrange
+from src.operations import distance, length, solve, make_sym, get_signed_max
 from typing import Tuple
 
 def Node(
     x: float, y: float, vx: bool = False, vy: bool = False, Px: float = 0, Pz: float = 0
 ):
+    """
+    Structure node object
+
+    Args:
+        x (float): x coordinate
+        y (float): y coordinate
+        vx (bool, optional): movements locked in x direction. Defaults to False.
+        vy (bool, optional): movements locked in y direction. Defaults to False.
+        Px (float, optional): load in x direction. Defaults to 0.
+        Pz (float, optional): load in y direction. Defaults to 0.
+    """
     return np.array([x, y, 0, 0, int(vx), int(vy), 0, 0, Px, Pz, 0], np.float64)
 
-TRUSS_DIMENSION = 7
-NODE_DIMENSION = 11
+TRUSS_MATRIX_DIMENSION = 7
+TRUSS_ARRAY_DIMENSION = 11
 
 class SpaceArea:
+    """
+    Structure problem space
+    """
     min_x: float
     min_y: float
     max_x: float
     max_y: float
 
-    def __init__(self, x1, y1, x2, y2) -> None:
-        self.min_x = x1
-        self.max_x = x2
-        self.min_y = y1
-        self.max_y = y2
+    def __init__(self, min_x, min_y, max_x, max_y) -> None:
+        self.min_x = min_x
+        self.max_x = max_x
+        self.min_y = min_y
+        self.max_y = max_y
 
 
 class Material:
@@ -30,12 +44,12 @@ class Material:
     density: float
     elastic_modulus: float
 
-    def __init__(self, Re, rho, E) -> None:
-        self.yield_strenght = Re
-        self.density = rho
-        self.elastic_modulus = E
+    def __init__(self, yield_strenght, density, elastic_modulus) -> None:
+        self.yield_strenght = yield_strenght
+        self.density = density
+        self.elastic_modulus = elastic_modulus
 
-
+# Example material
 MATERIAL_ALLUMINIUM = Material(240, 0.00000271, 72000)
 
 class StructureParameters:
@@ -66,11 +80,11 @@ class Structure:
         self._n_constrain = len(self._nodes)
         self._parameters = params
         self._reactions = np.sum(self._nodes[:, 4:6])
-        self._trusses = np.zeros((TRUSS_DIMENSION, self._n_constrain, self._n_constrain))
+        self._trusses = np.zeros((TRUSS_MATRIX_DIMENSION, self._n_constrain, self._n_constrain))
 
     def init(self, n):
-        self._nodes = np.zeros((n, NODE_DIMENSION))
-        self._trusses = np.zeros((TRUSS_DIMENSION, n, n))
+        self._nodes = np.zeros((n, TRUSS_ARRAY_DIMENSION))
+        self._trusses = np.zeros((TRUSS_MATRIX_DIMENSION, n, n))
         
     def _check_dimension(self, trusses: np.array, raise_error = True) -> bool:
         if len(self._nodes) != trusses.shape[0]:
@@ -127,7 +141,7 @@ class Structure:
             self._nodes[self._n_constrain:,1] = np.random.uniform(allowed_space.min_y, allowed_space.max_y, size=(n-self._n_constrain))
                 
         if not self._fixed_connections:
-            self._trusses = np.zeros((TRUSS_DIMENSION, n, n))
+            self._trusses = np.zeros((TRUSS_MATRIX_DIMENSION, n, n))
             l = length(distance(self._nodes, self._trusses[0], False))
             self._trusses[0, l < self._parameters.max_length*0.99] = 1
             conn = self.get_edge_count()
@@ -288,7 +302,7 @@ class Structure:
     def add_node(self, x, y, area=[0.001, 1]):
         self._nodes = np.append(self._nodes, [Node(x, y)], axis=0)
         n = len(self._nodes)
-        new_adj = np.zeros((TRUSS_DIMENSION, n, n))
+        new_adj = np.zeros((TRUSS_MATRIX_DIMENSION, n, n))
         new_adj[0, : (n - 1), : (n - 1)] = self._trusses[0]
         new_adj[1, : (n - 1), : (n - 1)] = self._trusses[1]
 

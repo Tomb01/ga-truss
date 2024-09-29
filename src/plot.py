@@ -71,10 +71,6 @@ def plot_structure(
                 s_y = nodes[i, 1]
                 e_y = nodes[j, 1]
                 line = (3 - 1) * area_ratio[i,j] + 1
-                if trusses[5, i, j] > 1:
-                    color = "red"
-                else:
-                    color = "blue"
                 axes.plot([s_x, e_x], [s_y, e_y], color=color, linewidth = line)
                 if e_x == s_x:
                     angle = 90

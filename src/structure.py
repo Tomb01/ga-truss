@@ -181,7 +181,7 @@ class Structure:
             dsum = dnode_m+dnode_m.T
             dsum[i] = 0
             dsum[:, i] = 0
-            collinear = np.nonzero(np.isclose(dsum, l, rtol=0.002)*self._trusses[0])
+            collinear = np.nonzero(np.isclose(dsum, l, rtol=0.003)*self._trusses[0])
             if delete:
                 # delete collinear edge
                 self._trusses[0, collinear[0], collinear[1]] = 0
@@ -394,12 +394,14 @@ class Structure:
         max_length = np.max(self._trusses[6])
 
         total_mass, _, mass_matrix = self.get_mass(include_density=False)
-        if max_displacement > 0.99*self._parameters.max_displacement or worst_eff > 0.99 or max_length > 0.99*self._parameters.max_length:
-            stress_eff = 10**-(max(max_displacement/self._parameters.max_displacement, worst_eff, max_length/self._parameters.max_length))
+        if max_displacement > 0.99*self._parameters.max_displacement or worst_eff > 0.99:
+            stress_eff = 10**(-max(max_displacement/self._parameters.max_displacement, worst_eff))
+        #elif max_length > 0.99*self._parameters.max_length:
+            #stress_eff = 10**(-max_length/self._parameters.max_length)
         else:
             mass_index = mass_matrix/total_mass
             eff = np.mean(self._trusses[5]*mass_index, where=(self._trusses[0]!=0))
-            stress_eff = eff
+            stress_eff = eff + 0.1
             #print(eff)
             #eff = total_mass/200
            
@@ -407,7 +409,7 @@ class Structure:
         
     def is_broken(self) -> bool:
         if np.any(self._trusses[5]) > 0:
-            return np.max(self._trusses[5]) > 1 or self.get_max_dispacement() > self._parameters.max_displacement or np.any(self._trusses[6]>self._parameters.max_length)
+            return np.max(self._trusses[5]) > 1 or self.get_max_dispacement() > self._parameters.max_displacement
         elif self._valid:
             raise ValueError("Efficency matrix not computed. Run compute method on this structure")
         

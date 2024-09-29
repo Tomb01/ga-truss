@@ -166,3 +166,4 @@ cython_debug/
 # Custom
 test.db
 .trash/**/*
+latex/**/*

@@ -17,9 +17,9 @@ P = 88964.43
 
 problem = [
     Node(0,0,True,True,0,0),
-    Node(l,0.01,False,False,0,-P),
+    Node(l,0,False,False,0,-P),
     Node(2*l,0,False,False,0,-P),
-    Node(3*l,0.01,False,False,0,-P),
+    Node(3*l,0,False,False,0,-P),
     Node(4*l,0,False,True, 0, 0)
 ]
 
@@ -35,8 +35,8 @@ problem = [
 connections = None
 
 sparam = StructureParameters()
-sparam.corner = SpaceArea(0,0.5*l,4*l,2*l)
-sparam.aggregation_radius = 0.2*l
+sparam.corner = SpaceArea(0,0.3*l,4*l,2*l)
+sparam.aggregation_radius = 0.3*l
 sparam.material = Material(1.38e8, 2768, 6.89e10)
 sparam.max_area = 0.00145
 sparam.min_area = 0.0000322
@@ -50,16 +50,16 @@ sparam.max_length = 1.5*1.41*l
 eparam = EvolutionParameter()
 eparam.elite_ratio = 0.01
 eparam.kill_ratio = 0.1
-eparam.total_mutation_ratio = 0.1
+eparam.total_mutation_ratio = 0.25
 eparam.sort_adj_fitness = True
-eparam.epochs = 100
-eparam.population = 100
-eparam.mutation_area = 3
-eparam.mutation_connection = 0
+eparam.epochs = 2000
+eparam.population = 200
+eparam.mutation_area = 5
+eparam.mutation_connection = 2
 eparam.mutation_node_delete = 0.1
-eparam.mutation_node_insert = 0
+eparam.mutation_node_insert = 1
 eparam.mutation_node_position = 1
-eparam.node_range = [2,3]
+eparam.node_range = [8,12]
 eparam.dynamic_mutation = False
-eparam.niche_radius = 0.001
+eparam.niche_radius = 0.0015
 eparam.mass_target = 1

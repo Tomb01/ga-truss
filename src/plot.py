@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from src.structure import Structure
 import numpy as np
 from math import atan2, degrees
-from src.utils.misc import newline
+from src.misc import newline
 from src.operations import upper_tri_masking
 
 ## Set of varius output and graphics function
@@ -33,7 +33,7 @@ def plot_node(axes, node: np.array, size=50, index=0, annotation = True) -> None
             # hinge
             plot_hinge(axes, node[0], node[1], node[6], node[7])
 
-def plot_structure(
+def plot(
     structure: Structure, figure: plt.figure = None, axes: plt.axes = None, color=None, annotation = True, area_range = None) -> None:
     """
     Plot a structure with matplotlib
@@ -67,7 +67,6 @@ def plot_structure(
     min_x = np.min(nodes[:,0])
     min_y = np.min(nodes[:,1])
 
-    space = structure._parameters.corner
     axes.set_xlim(min_x-1, max_x+1)
     axes.set_ylim(min_y-1, max_y+1)
     axes.set_aspect('equal', adjustable='box')
@@ -105,19 +104,28 @@ def plot_structure(
                 )
 
 
-def savetxt(structure: Structure, file: str) -> None:
+def save_report(structure: Structure, file: str) -> None:
+    """
+    Save structure parameter in a .txt report
+
+    Args:
+        structure (Structure): 
+        file (str): output file path
+    """
     with open(file, "w") as f:
         mass, total_mass, _ = structure.get_mass()
-        v_max = np.max(structure._nodes[3])
+        d_max = structure.get_max_dispacement()
         # General data
-        newline(f, structure.get_fitness())
-        newline(f, mass)
-        newline(f, total_mass)
-        newline(f, v_max)
-        newline(f, structure.is_broken())
-        newline(f, structure.is_valid())
+        newline(f, "------ Units of measure are the same used in the problem definition ------")
+        newline(f, "fitness = " + str(structure.get_fitness()))
+        newline(f, "mass (no nodes) = " + str(mass))
+        newline(f, "total mass (with nodes) = " + str(total_mass))
+        newline(f, "max displacement = " + str(d_max))
+        newline(f, "Can carry imposed loads? " + str(structure.is_broken()))
+        newline(f, "Is valid structure? " + str(structure.is_valid()))
         # Nodes
         newline(f, "")
+        newline(f, "------ Structure node values ------")
         for n in structure._nodes[:, 0:-1]:
             newline(f, ";".join(str(c) for c in n))
         # Trusses (normal form)

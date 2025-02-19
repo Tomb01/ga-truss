@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+title: "Ottimizzazione di strutture reticolari tramite algoritmi genetici"
+authors:
+  - family-names: "Bari"
+    given-names: "Tommaso"
+version: "1.0.0"
+date-released: "2024-09-27"
+repository-code: "https://github.com/ga-truss"
+license: "GPL-3.0-or-later"

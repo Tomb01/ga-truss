@@ -7,24 +7,24 @@ import warnings
 
 class EvolutionParameter:
     """
-    Parameter for an evolution run
-    
-    **Note 1**: Every attributes with _ratio_ suffix must be set as decimal value, as an example 0.1 = 10% of population \n
-    **Note 2**: Total mutation ratio control probability of **any** mutation and attributes with _mutation_ suffix control probability of 
-    **that** single mutation to occur if individual was mutate. If `total_mutation_ratio` is set to 0.5 and `mutation_node_position` is set 
-    to 0.1 an individual has 50% chance to mutate and **when mutate** has a 10% probabilty to random change node position.
-    
+    Parameters for an evolution run.
+
+    **Note 1**: All attributes with the `_ratio_` suffix must be set as decimal values. For example, 0.1 corresponds to 10% of the population. 
+
+    **Note 2**: The `total_mutation_ratio` controls the probability of **any** mutation occurring, while attributes with the `_mutation_` suffix control the probability of a specific mutation occurring once the individual is selected for mutation. 
+    For instance, if `total_mutation_ratio` is set to 0.5 and `mutation_node_position` is set to 0.1, the individual has a 50% chance of mutation and, if mutated, a 10% chance that the mutation will be a random change in node position.
+
     Attributes:
-        epochs: maximun number of generations
-        populations: number of individuals in generation
-        node_range: `[min, max]` initial population and reborn individuals node range
-        elite_ratio: population transferred from one generation to another 
-        kill_ratio: population killed and random replaced
-        total_mutation_ratio: probabilty of **any** mutation (1 = 100%)
-        mutation_node_position: probability of node position mutation
-        sort_adj_fitness: if true use adjusted fitness to sort population during selection
-        niche_radius: range where 2 individuals will be considered equal and their fitness will be adjusted
-        mass_target: mass to which the algorithm stop evolution and return results. 
+        epochs (int): Maximum number of generations (epochs) for the evolution run.
+        populations (int): The number of individuals in each generation.
+        node_range (List[float]): Range `[min, max]` for the initial population and for reborn individuals' node positions.
+        elite_ratio (float): Proportion of the population that is transferred directly from one generation to the next without mutation.
+        kill_ratio (float): Proportion of the population that is killed off and replaced with random individuals.
+        total_mutation_ratio (float): Probability of **any** mutation occurring (1 = 100% chance).
+        mutation_node_position (float): Probability that a mutation will involve changing the node position.
+        sort_adj_fitness (bool): If `True`, use adjusted fitness values to sort the population during selection.
+        niche_radius (float): Range within which two individuals will be considered equal, and their fitness will be adjusted accordingly.
+        mass_target (float): Target mass at which the algorithm will stop evolving and return results.
     """
     epochs: int
     population: int
@@ -42,22 +42,25 @@ class EvolutionParameter:
     mass_target: float
 
     
-def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParameters, sample_point: int) -> Tuple[np.array, Structure, np.array, np.array]:
+def evolve(problem: np.array, eparam: EvolutionParameter, sparam: StructureParameters, sample_point: int) -> Tuple[np.array, Structure, np.array]:
     """
-    Main evolution function
+    Main function to perform the evolution of the structure.
 
     Args:
-        problem (np.array): node array with contrain and loads.
-        eparam (EvolutionParameter): evolution parameter
-        sparam (StructureParameters): structure parameter
-        sample_point (int): number of best structure graph to save during evolution. 
-        Example: if set to 10 and `eparam.epochs` is set to 100 the function save an image of current best structure every 10 generations
+        problem (np.array): Node array containing the constraints and loads for the problem.
+        eparam (EvolutionParameter): Evolution parameters (e.g., mutation rate, selection method, etc.).
+        sparam (StructureParameters): Structural parameters (e.g., material properties, initial structure, etc.).
+        sample_point (int): The number of best structures to save during the evolution. 
+                             For example, if set to 10 and `eparam.epochs` is 100, the function will save an image of the current best structure every 10 generations.
 
     Raises:
-        IndexError: _description_
+        IndexError: Raised if there is an issue with array indexing, such as exceeding array bounds during evolution steps.
 
     Returns:
-        Tuple[np.array, Structure, np.array]: best fitness value for every generations, best structure, array of sampled structure (see `sample_point`)
+        Tuple[np.array, Structure, np.array, np.array]:
+            - An array of best fitness values for each generation.
+            - The best structure found throughout the evolution.
+            - An array of sampled structures (based on the `sample_point` value).
     """
     
     # Init flag and constants

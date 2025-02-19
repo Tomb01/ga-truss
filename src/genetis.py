@@ -18,19 +18,21 @@ def crossover(parent1: Structure, parent2: Structure,  fit1: float, fit2: float)
         Structure: child structure
     """
     
-    inn1 = parent1.get_node_innovations()
-    inn2 = parent2.get_node_innovations()
+    # Get innovations number and matrix dimension
+    innovations_parent1 = parent1.get_node_innovations()
+    innovations_parent2 = parent2.get_node_innovations()
     kp1 = fit1/(fit1+fit2)
     constrain_n = parent1._n_constrain
 
-    n1 = len(inn1)
-    n2 = len(inn2)
+    n1 = len(innovations_parent1)
+    n2 = len(innovations_parent2)
     
     filter_p1 = np.arange(n1)
     filter_p2 = np.zeros(n2, dtype=np.int32)
     j = n1 
+    # Find common and non-common gene
     for i in range(0, n2):
-        idx = np.where(inn1==inn2[i])[0]
+        idx = np.where(innovations_parent1==innovations_parent2[i])[0]
         if len(idx)>0:
             # common gene
             filter_p2[i] = idx[0]
@@ -41,42 +43,44 @@ def crossover(parent1: Structure, parent2: Structure,  fit1: float, fit2: float)
     
     k = j
             
+    # Setup array filter based on common gene
     _, idx, c = np.unique(filter_p2, return_inverse=True, return_counts=True)
-    fp1 = np.ix_(filter_p1, filter_p1)
-    fp2 = np.ix_(filter_p2, filter_p2)
+    filter_parent1 = np.ix_(filter_p1, filter_p1)
+    filter_parent2 = np.ix_(filter_p2, filter_p2)
 
+    ## Create parents genome
     genome1 = np.zeros((k, k))
     genome2 = np.zeros((k, k))
-
-    genome1[fp1] = parent1.get_connections()
-    genome2[fp2] = parent2.get_connections()
+    genome1[filter_parent1] = parent1.get_connections()
+    genome2[filter_parent2] = parent2.get_connections()
     
-    child_conn_filter = make_sym(np.random.choice([0,1], k*k, p=[1-kp1, kp1]).reshape((k,k))) == 1
+    # Create child genome
+    filter_child = make_sym(np.random.choice([0,1], k*k, p=[1-kp1, kp1]).reshape((k,k))) == 1
     child_genome = np.copy(genome1)
-    child_genome[child_conn_filter] = genome2[child_conn_filter]
+    child_genome[filter_child] = genome2[filter_child]
     np.fill_diagonal(child_genome, 0)
-    
-    # set child
+     
+    # Set child structure parameter
     c = Structure(parent1._nodes[0:constrain_n], parent1._parameters)
     c.init(k)
-    child_nodes = c._nodes
-    child_nodes[filter_p2] = parent2._nodes
-    child_nodes[filter_p1] = parent1._nodes
-    c._nodes = child_nodes
+    child_nodes = c.get_nodes()
+    child_nodes[filter_p2] = parent2.get_nodes()
+    child_nodes[filter_p1] = parent1.get_nodes()
+    c.set_nodes(child_nodes)
     c.set_connections(child_genome)
     
     # Set areas
     area1 = np.zeros((k, k))
     area2 = np.zeros((k, k))
-    area1[fp1] = parent1.get_area()
-    area2[fp2] = parent2.get_area()
+    area1[filter_parent1] = parent1.get_areas()
+    area2[filter_parent2] = parent2.get_areas()
     child_area = np.copy(area1)
-    child_area[child_conn_filter] = area2[child_conn_filter]
+    child_area[filter_child] = area2[filter_child]
     np.fill_diagonal(child_area, 0)
-    c.set_area(child_area)
+    c.set_areas(child_area)
     
     c.aggregate_nodes()
-    c.healing()
+    c.delete_disjoint_nodes()
 
     return c
     
@@ -153,16 +157,16 @@ def area_mutation(s: Structure, area_range) -> Structure:
         Structure: mutated structure
     """
     new_area = round(random.uniform(area_range[0], area_range[1]), s._parameters.round_digit)
-    conn = s.get_connections()
-    areas = s.get_area()
-    i,j = np.nonzero(conn)
+    connections = s.get_connections()
+    areas = s.get_areas()
+    i,j = np.nonzero(connections)
     if len(i) > 0:
         ix = random.randrange(0, len(i)-1)
         r = i[ix]
         c = j[ix]
         areas[r, c] = new_area
         areas[c, r] = new_area
-        s.set_area(areas)
+        s.set_areas(areas)
     
     return s
 
@@ -216,16 +220,16 @@ def connection_mutation(s: Structure, area_range) -> Structure:
     r = random_idx[0]
     c = random_idx[1]
     
-    conn = s.get_connections()
-    areas = s.get_area()
-    new_state = int(not conn[r, c])
-    conn[r, c] = new_state
-    conn[c, r] = new_state
+    connections = s.get_connections()
+    areas = s.get_areas()
+    new_state = int(not connections[r, c])
+    connections[r, c] = new_state
+    connections[c, r] = new_state
     new_area = round(random.uniform(area_range[0], area_range[1]) * new_state, s._parameters.round_digit)
     areas[c, r] = new_area
     areas[r, c] = new_area
 
-    s.set_connections(conn)
-    s.set_area(areas)
+    s.set_connections(connections)
+    s.set_areas(areas)
 
     return s

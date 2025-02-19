@@ -8,7 +8,7 @@ sys.path.insert(0, '../src')
 from src.classes.truss import TrussNode, Truss
 from src.classes.contrains import *
 from src.classes.structure import Structure
-from src.utils.misc import make_brige_coordinate
+from src.misc import make_brige_coordinate
 
 SIN_60 = math.sqrt(3)/2
 

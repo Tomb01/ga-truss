@@ -14,6 +14,8 @@ eparam = bar39_eparam
 sparam = bar39_sparam
 connections = [] # not used in this case
 
+#### END SIMULATIONS SETUP ####
+
 # Name of the simulation
 name = sys.argv[1]
 # Number of simulation

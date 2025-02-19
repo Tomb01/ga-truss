@@ -3,7 +3,7 @@
 ## General information
 
 Hi, I am **Tommaso Bari**, a student at University of Padua.
-This repository contains all the material related to my Bachelor's degree thesis. he goal of the thesis was to develop a genetic algorithm for generating 2D lattice structures under different constraints and loads.
+This repository contains all the material related to my Bachelor's degree thesis. The goal of the thesis was to develop a genetic algorithm for generating 2D lattice structures under different constraints and loads.
 
 The algorithm is written in python with a small amout of external libraries: primary _numpy_ and _matplotlib_.
 
